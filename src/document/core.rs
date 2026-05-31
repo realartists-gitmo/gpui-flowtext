@@ -362,7 +362,7 @@ const fn section_level_and_kind(style: ParagraphStyle) -> Option<(usize, Section
     ParagraphStyle::Block => Some((2, SectionKind::BlockSection)),
     ParagraphStyle::Tag => Some((3, SectionKind::TagSection)),
     ParagraphStyle::Analytic => Some((3, SectionKind::Analytic)),
-    ParagraphStyle::Normal | ParagraphStyle::Undertag => None,
+    ParagraphStyle::Normal | ParagraphStyle::Undertag | ParagraphStyle::Custom(_) => None,
   }
 }
 

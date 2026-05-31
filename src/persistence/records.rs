@@ -696,6 +696,7 @@ pub fn recovery_path_for_document(path: &Path) -> PathBuf {
 #[cfg(test)]
 mod records_tests {
   use super::*;
+  use crate::{InputParagraph, InputRun};
 
   #[test]
   fn normalizes_legacy_character_count_run_lengths() {
@@ -730,5 +731,30 @@ mod records_tests {
 
     assert_eq!(runs[0].len, "Kepe et al. ".len());
     assert_eq!(runs[1].len, "‘23".len());
+  }
+
+  #[test]
+  fn custom_style_slots_round_trip_through_db8() {
+    let document = crate::document_from_input(
+      DocumentTheme::default(),
+      vec![InputParagraph {
+        style: ParagraphStyle::Custom(7),
+        runs: vec![InputRun {
+          text: "custom".to_string(),
+          styles: RunStyles {
+            semantic: RunSemanticStyle::Custom(9),
+            highlight: Some(HighlightStyle::Custom(11)),
+            ..RunStyles::default()
+          },
+        }],
+      }],
+    );
+
+    let bytes = crate::db8_bytes(&document).expect("serialize custom styles");
+    let loaded = crate::read_db8_bytes(&bytes).expect("read custom styles");
+
+    assert_eq!(loaded.paragraphs[0].style, ParagraphStyle::Custom(7));
+    assert_eq!(loaded.paragraphs[0].runs[0].styles.semantic, RunSemanticStyle::Custom(9));
+    assert_eq!(loaded.paragraphs[0].runs[0].styles.highlight, Some(HighlightStyle::Custom(11)));
   }
 }

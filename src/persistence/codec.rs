@@ -113,6 +113,7 @@ const fn encode_paragraph_style(style: ParagraphStyle) -> u8 {
     ParagraphStyle::Analytic => 4,
     ParagraphStyle::Normal => 5,
     ParagraphStyle::Undertag => 6,
+    ParagraphStyle::Custom(slot) => 128 + (slot & 0x7f),
   }
 }
 
@@ -126,6 +127,7 @@ fn decode_paragraph_style(value: u8) -> io::Result<ParagraphStyle> {
     4 => Ok(ParagraphStyle::Analytic),
     5 => Ok(ParagraphStyle::Normal),
     6 => Ok(ParagraphStyle::Undertag),
+    128..=255 => Ok(ParagraphStyle::Custom(value - 128)),
     _ => Err(io::Error::new(io::ErrorKind::InvalidData, "invalid paragraph style")),
   }
 }
@@ -193,6 +195,7 @@ const fn encode_run_semantic_style(style: RunSemanticStyle) -> u8 {
     RunSemanticStyle::Underline => 3,
     RunSemanticStyle::Condensed => 4,
     RunSemanticStyle::Ultracondensed => 5,
+    RunSemanticStyle::Custom(slot) => 128 + (slot & 0x7f),
   }
 }
 
@@ -205,6 +208,7 @@ fn decode_run_semantic_style(value: u8) -> io::Result<RunSemanticStyle> {
     3 => Ok(RunSemanticStyle::Underline),
     4 => Ok(RunSemanticStyle::Condensed),
     5 => Ok(RunSemanticStyle::Ultracondensed),
+    128..=255 => Ok(RunSemanticStyle::Custom(value - 128)),
     _ => Err(io::Error::new(io::ErrorKind::InvalidData, "invalid run semantic style")),
   }
 }
@@ -216,19 +220,18 @@ const fn encode_highlight_style(style: Option<HighlightStyle>) -> u8 {
     Some(HighlightStyle::Spoken) => 1,
     Some(HighlightStyle::Insert) => 2,
     Some(HighlightStyle::Alternative) => 3,
+    Some(HighlightStyle::Custom(slot)) => 128 + (slot & 0x7f),
   }
 }
 
 #[hotpath::measure]
 fn decode_highlight_style(value: u8) -> io::Result<Option<HighlightStyle>> {
-  if value > 31 {
-    return Err(io::Error::new(io::ErrorKind::InvalidData, "invalid highlight style slot"));
-  }
   Ok(match value {
     0 => None,
     1 => Some(HighlightStyle::Spoken),
     2 => Some(HighlightStyle::Insert),
     3 => Some(HighlightStyle::Alternative),
+    128..=255 => Some(HighlightStyle::Custom(value - 128)),
     _ => {
       return Err(io::Error::new(
         io::ErrorKind::InvalidData,

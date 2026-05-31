@@ -17,7 +17,7 @@ pub(super) fn paragraph_format(document: &Document, style: ParagraphStyle) -> Ef
   };
 
   match style {
-    ParagraphStyle::Normal => normal,
+    ParagraphStyle::Normal | ParagraphStyle::Custom(_) => normal,
     ParagraphStyle::Pocket => EffectiveParagraphFormat {
       font_size: theme.pocket_font_size * zoom,
       color: theme.pocket_color,
@@ -105,12 +105,13 @@ pub(super) fn run_format(document: &Document, paragraph: &EffectiveParagraphForm
       HighlightStyle::Spoken => theme.highlight_spoken,
       HighlightStyle::Insert => theme.highlight_insert,
       HighlightStyle::Alternative => theme.highlight_alternative,
+      HighlightStyle::Custom(_) => theme.highlight_alternative,
     }),
     border_width: px(0.0),
   };
 
   match styles.semantic {
-    RunSemanticStyle::Plain => {},
+    RunSemanticStyle::Plain | RunSemanticStyle::Custom(_) => {},
     RunSemanticStyle::Underline => {
       format.font_size = theme.body_font_size * zoom;
       format.color = theme.underline_color;

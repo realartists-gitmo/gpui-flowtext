@@ -51,6 +51,23 @@ pub enum ParagraphStyle {
   Analytic,
   Normal,
   Undertag,
+  Custom(u8),
+}
+
+impl ParagraphStyle {
+  #[must_use]
+  pub const fn slot(self) -> u64 {
+    match self {
+      Self::Pocket => 0,
+      Self::Hat => 1,
+      Self::Block => 2,
+      Self::Tag => 3,
+      Self::Analytic => 4,
+      Self::Normal => 5,
+      Self::Undertag => 6,
+      Self::Custom(slot) => 128 + slot as u64,
+    }
+  }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]

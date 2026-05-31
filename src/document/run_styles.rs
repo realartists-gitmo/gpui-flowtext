@@ -8,6 +8,22 @@ pub enum RunSemanticStyle {
   Underline,
   Condensed,
   Ultracondensed,
+  Custom(u8),
+}
+
+impl RunSemanticStyle {
+  #[must_use]
+  pub const fn slot(self) -> u64 {
+    match self {
+      Self::Plain => 0,
+      Self::Cite => 1,
+      Self::Emphasis => 2,
+      Self::Underline => 3,
+      Self::Condensed => 4,
+      Self::Ultracondensed => 5,
+      Self::Custom(slot) => 128 + slot as u64,
+    }
+  }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
@@ -15,6 +31,19 @@ pub enum HighlightStyle {
   Spoken,
   Insert,
   Alternative,
+  Custom(u8),
+}
+
+impl HighlightStyle {
+  #[must_use]
+  pub const fn slot(self) -> u64 {
+    match self {
+      Self::Spoken => 1,
+      Self::Insert => 2,
+      Self::Alternative => 3,
+      Self::Custom(slot) => 128 + slot as u64,
+    }
+  }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
