@@ -3,12 +3,14 @@ mod demo;
 mod document;
 mod edit_ops;
 mod persistence;
+mod rich_text;
 
 pub use collaboration::*;
 pub use demo::*;
 pub use document::*;
 pub use edit_ops::*;
 pub use persistence::*;
+pub use rich_text::*;
 
 use std::time::Instant;
 
