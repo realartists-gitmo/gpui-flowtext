@@ -96,26 +96,26 @@ impl RichTextEditor {
   fn on_redo(&mut self, _: &Redo, _: &mut Window, cx: &mut Context<Self>) {
     self.redo(cx);
   }
-  fn on_set_paragraph_pocket(&mut self, _: &SetParagraphPocket, _: &mut Window, cx: &mut Context<Self>) {
-    self.set_paragraph_style_for_selection(ParagraphStyle::Pocket, cx);
+  fn on_set_paragraph_style_0(&mut self, _: &SetParagraphStyle0, _: &mut Window, cx: &mut Context<Self>) {
+    self.set_paragraph_style_for_selection(ParagraphStyle::Custom(0), cx);
   }
-  fn on_set_paragraph_hat(&mut self, _: &SetParagraphHat, _: &mut Window, cx: &mut Context<Self>) {
-    self.set_paragraph_style_for_selection(ParagraphStyle::Hat, cx);
+  fn on_set_paragraph_style_1(&mut self, _: &SetParagraphStyle1, _: &mut Window, cx: &mut Context<Self>) {
+    self.set_paragraph_style_for_selection(ParagraphStyle::Custom(1), cx);
   }
-  fn on_set_paragraph_block(&mut self, _: &SetParagraphBlock, _: &mut Window, cx: &mut Context<Self>) {
-    self.set_paragraph_style_for_selection(ParagraphStyle::Block, cx);
+  fn on_set_paragraph_style_2(&mut self, _: &SetParagraphStyle2, _: &mut Window, cx: &mut Context<Self>) {
+    self.set_paragraph_style_for_selection(ParagraphStyle::Custom(2), cx);
   }
-  fn on_set_paragraph_tag(&mut self, _: &SetParagraphTag, _: &mut Window, cx: &mut Context<Self>) {
-    self.set_paragraph_style_for_selection(ParagraphStyle::Tag, cx);
+  fn on_set_paragraph_style_3(&mut self, _: &SetParagraphStyle3, _: &mut Window, cx: &mut Context<Self>) {
+    self.set_paragraph_style_for_selection(ParagraphStyle::Custom(3), cx);
   }
-  fn on_set_paragraph_analytic(&mut self, _: &SetParagraphAnalytic, _: &mut Window, cx: &mut Context<Self>) {
-    self.set_paragraph_style_for_selection(ParagraphStyle::Analytic, cx);
+  fn on_set_paragraph_style_4(&mut self, _: &SetParagraphStyle4, _: &mut Window, cx: &mut Context<Self>) {
+    self.set_paragraph_style_for_selection(ParagraphStyle::Custom(4), cx);
   }
-  fn on_set_paragraph_undertag(&mut self, _: &SetParagraphUndertag, _: &mut Window, cx: &mut Context<Self>) {
-    self.set_paragraph_style_for_selection(ParagraphStyle::Undertag, cx);
+  fn on_set_paragraph_style_5(&mut self, _: &SetParagraphStyle5, _: &mut Window, cx: &mut Context<Self>) {
+    self.set_paragraph_style_for_selection(ParagraphStyle::Custom(5), cx);
   }
-  fn on_toggle_cite(&mut self, _: &ToggleCite, _: &mut Window, cx: &mut Context<Self>) {
-    self.toggle_cite(cx);
+  fn on_set_paragraph_style_6(&mut self, _: &SetParagraphStyle6, _: &mut Window, cx: &mut Context<Self>) {
+    self.set_paragraph_style_for_selection(ParagraphStyle::Custom(6), cx);
   }
   fn on_toggle_underline(&mut self, _: &ToggleUnderline, _: &mut Window, cx: &mut Context<Self>) {
     self.toggle_underline(cx);
@@ -123,11 +123,29 @@ impl RichTextEditor {
   fn on_toggle_strikethrough(&mut self, _: &ToggleStrikethrough, _: &mut Window, cx: &mut Context<Self>) {
     self.toggle_strikethrough(cx);
   }
-  fn on_toggle_emphasis(&mut self, _: &ToggleEmphasis, _: &mut Window, cx: &mut Context<Self>) {
-    self.toggle_emphasis(cx);
+  fn on_toggle_semantic_style_1(&mut self, _: &ToggleSemanticStyle1, _: &mut Window, cx: &mut Context<Self>) {
+    self.toggle_semantic_style_for_selection(RunSemanticStyle::Custom(1), cx);
   }
-  fn on_set_highlight_spoken(&mut self, _: &SetHighlightSpoken, _: &mut Window, cx: &mut Context<Self>) {
-    self.set_highlight(HighlightStyle::Spoken, cx);
+  fn on_toggle_semantic_style_2(&mut self, _: &ToggleSemanticStyle2, _: &mut Window, cx: &mut Context<Self>) {
+    self.toggle_semantic_style_for_selection(RunSemanticStyle::Custom(2), cx);
+  }
+  fn on_toggle_semantic_style_3(&mut self, _: &ToggleSemanticStyle3, _: &mut Window, cx: &mut Context<Self>) {
+    self.toggle_semantic_style_for_selection(RunSemanticStyle::Custom(3), cx);
+  }
+  fn on_toggle_semantic_style_4(&mut self, _: &ToggleSemanticStyle4, _: &mut Window, cx: &mut Context<Self>) {
+    self.toggle_semantic_style_for_selection(RunSemanticStyle::Custom(4), cx);
+  }
+  fn on_toggle_semantic_style_5(&mut self, _: &ToggleSemanticStyle5, _: &mut Window, cx: &mut Context<Self>) {
+    self.toggle_semantic_style_for_selection(RunSemanticStyle::Custom(5), cx);
+  }
+  fn on_set_highlight_style_1(&mut self, _: &SetHighlightStyle1, _: &mut Window, cx: &mut Context<Self>) {
+    self.set_highlight(HighlightStyle::Custom(1), cx);
+  }
+  fn on_set_highlight_style_2(&mut self, _: &SetHighlightStyle2, _: &mut Window, cx: &mut Context<Self>) {
+    self.set_highlight(HighlightStyle::Custom(2), cx);
+  }
+  fn on_set_highlight_style_3(&mut self, _: &SetHighlightStyle3, _: &mut Window, cx: &mut Context<Self>) {
+    self.set_highlight(HighlightStyle::Custom(3), cx);
   }
   fn on_apply_highlight_to_selection(&mut self, _: &ApplyHighlightToSelection, _: &mut Window, cx: &mut Context<Self>) {
     self.apply_current_highlight_to_selection(cx);

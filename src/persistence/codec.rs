@@ -71,11 +71,11 @@ fn read_bytes<'bytes>(cursor: &mut Cursor<&'bytes [u8]>, len: usize, label: &'st
 
 #[hotpath::measure]
 fn read_string(cursor: &mut Cursor<&[u8]>) -> io::Result<String> {
-  let len = read_len(cursor, "DB8 string length")?;
-  let bytes = read_bytes(cursor, len, "DB8 string")?;
+  let len = read_len(cursor, "native document string length")?;
+  let bytes = read_bytes(cursor, len, "native document string")?;
   std::str::from_utf8(bytes)
     .map(std::borrow::ToOwned::to_owned)
-    .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "DB8 string is not UTF-8"))
+    .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "native document string is not UTF-8"))
 }
 
 #[hotpath::measure]
@@ -106,13 +106,13 @@ fn decode_block_alignment(value: u8) -> io::Result<BlockAlignment> {
 #[hotpath::measure]
 const fn encode_paragraph_style(style: ParagraphStyle) -> u8 {
   match style {
-    ParagraphStyle::Pocket => 0,
-    ParagraphStyle::Hat => 1,
-    ParagraphStyle::Block => 2,
-    ParagraphStyle::Tag => 3,
-    ParagraphStyle::Analytic => 4,
+    ParagraphStyle::Custom(0) => 0,
+    ParagraphStyle::Custom(1) => 1,
+    ParagraphStyle::Custom(2) => 2,
+    ParagraphStyle::Custom(3) => 3,
+    ParagraphStyle::Custom(4) => 4,
     ParagraphStyle::Normal => 5,
-    ParagraphStyle::Undertag => 6,
+    ParagraphStyle::Custom(6) => 6,
     ParagraphStyle::Custom(slot) => 128 + (slot & 0x7f),
   }
 }
@@ -120,13 +120,13 @@ const fn encode_paragraph_style(style: ParagraphStyle) -> u8 {
 #[hotpath::measure]
 fn decode_paragraph_style(value: u8) -> io::Result<ParagraphStyle> {
   match value {
-    0 => Ok(ParagraphStyle::Pocket),
-    1 => Ok(ParagraphStyle::Hat),
-    2 => Ok(ParagraphStyle::Block),
-    3 => Ok(ParagraphStyle::Tag),
-    4 => Ok(ParagraphStyle::Analytic),
+    0 => Ok(ParagraphStyle::Custom(0)),
+    1 => Ok(ParagraphStyle::Custom(1)),
+    2 => Ok(ParagraphStyle::Custom(2)),
+    3 => Ok(ParagraphStyle::Custom(3)),
+    4 => Ok(ParagraphStyle::Custom(4)),
     5 => Ok(ParagraphStyle::Normal),
-    6 => Ok(ParagraphStyle::Undertag),
+    6 => Ok(ParagraphStyle::Custom(6)),
     128..=255 => Ok(ParagraphStyle::Custom(value - 128)),
     _ => Err(io::Error::new(io::ErrorKind::InvalidData, "invalid paragraph style")),
   }
@@ -135,25 +135,15 @@ fn decode_paragraph_style(value: u8) -> io::Result<ParagraphStyle> {
 #[hotpath::measure]
 const fn encode_section_kind(kind: SectionKind) -> u8 {
   match kind {
-    SectionKind::Pocket => 0,
-    SectionKind::Hat => 1,
-    SectionKind::BlockSection => 2,
-    SectionKind::TagSection => 3,
-    SectionKind::Analytic => 4,
-    SectionKind::Card => 5,
+    SectionKind::Custom(slot) => slot & 0x7f,
   }
 }
 
 #[hotpath::measure]
 fn decode_section_kind(value: u8) -> io::Result<SectionKind> {
   match value {
-    0 => Ok(SectionKind::Pocket),
-    1 => Ok(SectionKind::Hat),
-    2 => Ok(SectionKind::BlockSection),
-    3 => Ok(SectionKind::TagSection),
-    4 => Ok(SectionKind::Analytic),
-    5 => Ok(SectionKind::Card),
-    _ => Err(io::Error::new(io::ErrorKind::InvalidData, "invalid section kind")),
+    0..=127 => Ok(SectionKind::Custom(value)),
+    128..=255 => Err(io::Error::new(io::ErrorKind::InvalidData, "invalid section kind")),
   }
 }
 
@@ -190,11 +180,11 @@ fn read_run_styles(cursor: &mut Cursor<&[u8]>) -> io::Result<RunStyles> {
 const fn encode_run_semantic_style(style: RunSemanticStyle) -> u8 {
   match style {
     RunSemanticStyle::Plain => 0,
-    RunSemanticStyle::Cite => 1,
-    RunSemanticStyle::Emphasis => 2,
-    RunSemanticStyle::Underline => 3,
-    RunSemanticStyle::Condensed => 4,
-    RunSemanticStyle::Ultracondensed => 5,
+    RunSemanticStyle::Custom(1) => 1,
+    RunSemanticStyle::Custom(2) => 2,
+    RunSemanticStyle::Custom(3) => 3,
+    RunSemanticStyle::Custom(4) => 4,
+    RunSemanticStyle::Custom(5) => 5,
     RunSemanticStyle::Custom(slot) => 128 + (slot & 0x7f),
   }
 }
@@ -203,11 +193,11 @@ const fn encode_run_semantic_style(style: RunSemanticStyle) -> u8 {
 fn decode_run_semantic_style(value: u8) -> io::Result<RunSemanticStyle> {
   match value {
     0 => Ok(RunSemanticStyle::Plain),
-    1 => Ok(RunSemanticStyle::Cite),
-    2 => Ok(RunSemanticStyle::Emphasis),
-    3 => Ok(RunSemanticStyle::Underline),
-    4 => Ok(RunSemanticStyle::Condensed),
-    5 => Ok(RunSemanticStyle::Ultracondensed),
+    1 => Ok(RunSemanticStyle::Custom(1)),
+    2 => Ok(RunSemanticStyle::Custom(2)),
+    3 => Ok(RunSemanticStyle::Custom(3)),
+    4 => Ok(RunSemanticStyle::Custom(4)),
+    5 => Ok(RunSemanticStyle::Custom(5)),
     128..=255 => Ok(RunSemanticStyle::Custom(value - 128)),
     _ => Err(io::Error::new(io::ErrorKind::InvalidData, "invalid run semantic style")),
   }
@@ -217,9 +207,9 @@ fn decode_run_semantic_style(value: u8) -> io::Result<RunSemanticStyle> {
 const fn encode_highlight_style(style: Option<HighlightStyle>) -> u8 {
   match style {
     None => 0,
-    Some(HighlightStyle::Spoken) => 1,
-    Some(HighlightStyle::Insert) => 2,
-    Some(HighlightStyle::Alternative) => 3,
+    Some(HighlightStyle::Custom(1)) => 1,
+    Some(HighlightStyle::Custom(2)) => 2,
+    Some(HighlightStyle::Custom(3)) => 3,
     Some(HighlightStyle::Custom(slot)) => 128 + (slot & 0x7f),
   }
 }
@@ -228,9 +218,9 @@ const fn encode_highlight_style(style: Option<HighlightStyle>) -> u8 {
 fn decode_highlight_style(value: u8) -> io::Result<Option<HighlightStyle>> {
   Ok(match value {
     0 => None,
-    1 => Some(HighlightStyle::Spoken),
-    2 => Some(HighlightStyle::Insert),
-    3 => Some(HighlightStyle::Alternative),
+    1 => Some(HighlightStyle::Custom(1)),
+    2 => Some(HighlightStyle::Custom(2)),
+    3 => Some(HighlightStyle::Custom(3)),
     128..=255 => Some(HighlightStyle::Custom(value - 128)),
     _ => {
       return Err(io::Error::new(

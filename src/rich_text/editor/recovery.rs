@@ -121,10 +121,10 @@ impl RichTextEditor {
 
   fn refresh_save_status(&mut self) {
     if self
-      .last_send_db8_generation
+      .last_send_document_generation
       .is_some_and(|generation| self.saved_generation > generation)
     {
-      self.last_send_db8_generation = None;
+      self.last_send_document_generation = None;
     }
     if self
       .last_format_export_generation
@@ -195,7 +195,7 @@ impl RichTextEditor {
         .background_executor()
         .spawn(async move {
           let document = detach_document_for_background_write(&document);
-          write_db8(path, &document)
+          write_document(path, &document)
         })
         .await;
       log_timing_lazy("recovery write", write_timing, || format!("paragraphs={paragraph_count}"));

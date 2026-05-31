@@ -43,7 +43,7 @@ impl VisibilityIndex {
     for block in document.blocks.iter() {
       match block {
         Block::Paragraph(paragraph) => {
-          visible_blocks.push(!invisibility_mode || paragraph_is_visible(paragraph));
+          visible_blocks.push(!invisibility_mode || paragraph_is_visible(document, paragraph));
         },
         Block::Image(_) | Block::Equation(_) | Block::Table(_) => {
           visible_blocks.push(!invisibility_mode);
@@ -60,16 +60,18 @@ impl VisibilityIndex {
 }
 
 #[hotpath::measure]
-pub(super) fn paragraph_is_visible(paragraph: &Paragraph) -> bool {
-  matches!(
-    paragraph.style,
-    ParagraphStyle::Pocket
-      | ParagraphStyle::Hat
-      | ParagraphStyle::Block
-      | ParagraphStyle::Tag
-      | ParagraphStyle::Analytic
-      | ParagraphStyle::Undertag
-  ) || paragraph.runs.iter().any(|run| run_is_visible(run.styles))
+pub(super) fn paragraph_is_visible(document: &Document, paragraph: &Paragraph) -> bool {
+  paragraph_is_visible_for_theme(&document.theme, paragraph)
+}
+
+#[hotpath::measure]
+pub(super) fn paragraph_is_visible_for_theme(theme: &DocumentTheme, paragraph: &Paragraph) -> bool {
+  match paragraph.style {
+    ParagraphStyle::Normal => {},
+    ParagraphStyle::Custom(slot) if theme.invisibility_visible_paragraph_styles.contains(&(slot & 0x7f)) => return true,
+    ParagraphStyle::Custom(_) => {},
+  }
+  paragraph.runs.iter().any(|run| run_is_visible_for_theme(theme, run.styles))
 }
 
 pub(super) const INVISIBILITY_PROJECTED_VERSION_OFFSET: u64 = 0x9E37_79B9_7F4A_7C15;
@@ -109,8 +111,21 @@ pub(super) fn invisibility_projected_document(document: &Document, paragraph_ix:
 }
 
 #[hotpath::measure]
-pub(super) fn run_is_visible(styles: RunStyles) -> bool {
-  styles.semantic == RunSemanticStyle::Cite || matches!(styles.highlight, Some(HighlightStyle::Spoken | HighlightStyle::Alternative))
+pub(super) fn run_is_visible(document: &Document, styles: RunStyles) -> bool {
+  run_is_visible_for_theme(&document.theme, styles)
+}
+
+#[hotpath::measure]
+pub(super) fn run_is_visible_for_theme(theme: &DocumentTheme, styles: RunStyles) -> bool {
+  match styles.semantic {
+    RunSemanticStyle::Plain => {},
+    RunSemanticStyle::Custom(slot) if theme.invisibility_visible_semantic_styles.contains(&(slot & 0x7f)) => return true,
+    RunSemanticStyle::Custom(_) => {},
+  }
+  match styles.highlight {
+    Some(HighlightStyle::Custom(slot)) => theme.invisibility_visible_highlight_styles.contains(&(slot & 0x7f)),
+    None => false,
+  }
 }
 
 #[hotpath::measure]
@@ -133,7 +148,7 @@ pub(super) fn projected_visible_paragraph_text_and_runs(document: &Document, par
   let visible_run_count = paragraph
     .runs
     .iter()
-    .filter(|run| run.len > 0 && run_is_visible(run.styles))
+    .filter(|run| run.len > 0 && run_is_visible(document, run.styles))
     .count();
   if visible_run_count == 0 {
     return None;
@@ -141,7 +156,7 @@ pub(super) fn projected_visible_paragraph_text_and_runs(document: &Document, par
   let visible_text_len = paragraph
     .runs
     .iter()
-    .filter(|run| run_is_visible(run.styles))
+    .filter(|run| run_is_visible(document, run.styles))
     .map(|run| run.len)
     .sum::<usize>();
   let mut text = String::with_capacity(visible_text_len.saturating_add(visible_run_count.saturating_sub(1)));
@@ -152,7 +167,7 @@ pub(super) fn projected_visible_paragraph_text_and_runs(document: &Document, par
     let start = byte;
     let end = start + run.len;
     byte = end;
-    if start >= end || end > paragraph_len || !run_is_visible(run.styles) {
+    if start >= end || end > paragraph_len || !run_is_visible(document, run.styles) {
       continue;
     }
     if !text.is_empty() {

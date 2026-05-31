@@ -7,7 +7,7 @@ struct Db8Chunk {
 }
 
 #[hotpath::measure]
-fn read_db8_vnext(mut cursor: Cursor<&[u8]>, timing: Instant) -> io::Result<Document> {
+fn read_document_vnext(mut cursor: Cursor<&[u8]>, timing: Instant) -> io::Result<Document> {
   let chunk_count = read_u32(&mut cursor)? as usize;
   let mut chunks = Vec::with_capacity(chunk_count.min(32));
   for _ in 0..chunk_count {
@@ -15,27 +15,27 @@ fn read_db8_vnext(mut cursor: Cursor<&[u8]>, timing: Instant) -> io::Result<Docu
     let flags = read_u8(&mut cursor)?;
     let _reserved = read_u16(&mut cursor)?;
     if flags != 0 {
-      return Err(io::Error::new(io::ErrorKind::InvalidData, "unsupported DB8 chunk flags"));
+      return Err(io::Error::new(io::ErrorKind::InvalidData, "unsupported native document chunk flags"));
     }
-    let offset = read_len(&mut cursor, "DB8 chunk offset")?;
-    let len = read_len(&mut cursor, "DB8 chunk length")?;
+    let offset = read_len(&mut cursor, "native document chunk offset")?;
+    let len = read_len(&mut cursor, "native document chunk length")?;
     chunks.push(Db8Chunk { kind, offset, len });
   }
 
-  let text_bytes = required_chunk(cursor.get_ref(), &chunks, CHUNK_TEXT, "DB8 text chunk")?;
+  let text_bytes = required_chunk(cursor.get_ref(), &chunks, CHUNK_TEXT, "native document text chunk")?;
   let text = std::str::from_utf8(text_bytes)
     .map(std::borrow::ToOwned::to_owned)
-    .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "DB8 text chunk is not UTF-8"))?;
-  let assets = read_assets_chunk(required_chunk(cursor.get_ref(), &chunks, CHUNK_ASSETS, "DB8 assets chunk")?)?;
-  let (blocks, paragraphs) = read_blocks_chunk(required_chunk(cursor.get_ref(), &chunks, CHUNK_BLOCKS, "DB8 blocks chunk")?, &text)?;
+    .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "native document text chunk is not UTF-8"))?;
+  let assets = read_assets_chunk(required_chunk(cursor.get_ref(), &chunks, CHUNK_ASSETS, "native document assets chunk")?)?;
+  let (blocks, paragraphs) = read_blocks_chunk(required_chunk(cursor.get_ref(), &chunks, CHUNK_BLOCKS, "native document blocks chunk")?, &text)?;
   let paragraph_ids = read_paragraph_ids_chunk(required_chunk(
     cursor.get_ref(),
     &chunks,
     CHUNK_PARAGRAPH_IDS,
-    "DB8 paragraph IDs chunk",
+    "native document paragraph IDs chunk",
   )?)?;
-  let block_ids = read_block_ids_chunk(required_chunk(cursor.get_ref(), &chunks, CHUNK_BLOCK_IDS, "DB8 block IDs chunk")?)?;
-  let sections = read_sections_chunk(required_chunk(cursor.get_ref(), &chunks, CHUNK_SECTIONS, "DB8 sections chunk")?)?;
+  let block_ids = read_block_ids_chunk(required_chunk(cursor.get_ref(), &chunks, CHUNK_BLOCK_IDS, "native document block IDs chunk")?)?;
+  let sections = read_sections_chunk(required_chunk(cursor.get_ref(), &chunks, CHUNK_SECTIONS, "native document sections chunk")?)?;
 
   let offset_index = ParagraphOffsetIndex::new(&paragraphs);
   let mut document = Document {
@@ -51,7 +51,7 @@ fn read_db8_vnext(mut cursor: Cursor<&[u8]>, timing: Instant) -> io::Result<Docu
   reconcile_document_ids(&mut document);
   validate_or_rebuild_sections(&mut document);
   validate_document(&document)?;
-  log_timing_lazy("db8 vnext read", timing, || {
+  log_timing_lazy("document vnext read", timing, || {
     format!(
       "bytes={} blocks={} paragraphs={} sections={}",
       document.text.byte_len(),
@@ -87,7 +87,7 @@ fn required_chunk<'bytes>(
 #[hotpath::measure]
 fn read_assets_chunk(bytes: &[u8]) -> io::Result<AssetStore> {
   let mut cursor = Cursor::new(bytes);
-  let asset_count = read_len(&mut cursor, "DB8 asset count")?;
+  let asset_count = read_len(&mut cursor, "native document asset count")?;
   let mut assets = AssetStore::default();
   assets.assets.reserve(asset_count);
   for _ in 0..asset_count {
@@ -100,7 +100,7 @@ fn read_assets_chunk(bytes: &[u8]) -> io::Result<AssetStore> {
 #[hotpath::measure]
 fn read_blocks_chunk(bytes: &[u8], text: &str) -> io::Result<(Vec<Block>, Vec<Paragraph>)> {
   let mut cursor = Cursor::new(bytes);
-  let block_count = read_len(&mut cursor, "DB8 block count")?;
+  let block_count = read_len(&mut cursor, "native document block count")?;
   let mut blocks = Vec::with_capacity(block_count.min(4096));
   let mut paragraphs = Vec::new();
   for _ in 0..block_count {
@@ -126,7 +126,7 @@ fn read_blocks_chunk(bytes: &[u8], text: &str) -> io::Result<(Vec<Block>, Vec<Pa
 #[hotpath::measure]
 fn read_paragraph_ids_chunk(bytes: &[u8]) -> io::Result<Vec<ParagraphId>> {
   let mut cursor = Cursor::new(bytes);
-  let count = read_len(&mut cursor, "DB8 paragraph ID count")?;
+  let count = read_len(&mut cursor, "native document paragraph ID count")?;
   let mut ids = Vec::with_capacity(count);
   for _ in 0..count {
     ids.push(ParagraphId(read_u128(&mut cursor)?));
@@ -137,7 +137,7 @@ fn read_paragraph_ids_chunk(bytes: &[u8]) -> io::Result<Vec<ParagraphId>> {
 #[hotpath::measure]
 fn read_block_ids_chunk(bytes: &[u8]) -> io::Result<Vec<BlockId>> {
   let mut cursor = Cursor::new(bytes);
-  let count = read_len(&mut cursor, "DB8 block ID count")?;
+  let count = read_len(&mut cursor, "native document block ID count")?;
   let mut ids = Vec::with_capacity(count);
   for _ in 0..count {
     ids.push(BlockId(read_u128(&mut cursor)?));
@@ -148,7 +148,7 @@ fn read_block_ids_chunk(bytes: &[u8]) -> io::Result<Vec<BlockId>> {
 #[hotpath::measure]
 fn read_sections_chunk(bytes: &[u8]) -> io::Result<Vec<DocumentSection>> {
   let mut cursor = Cursor::new(bytes);
-  let count = read_len(&mut cursor, "DB8 section count")?;
+  let count = read_len(&mut cursor, "native document section count")?;
   let mut sections = Vec::with_capacity(count);
   for _ in 0..count {
     sections.push(read_section_record(&mut cursor)?);
@@ -157,19 +157,19 @@ fn read_sections_chunk(bytes: &[u8]) -> io::Result<Vec<DocumentSection>> {
 }
 
 #[hotpath::measure]
-fn read_db8_current(mut cursor: Cursor<&[u8]>, timing: Instant) -> io::Result<Document> {
+fn read_document_current(mut cursor: Cursor<&[u8]>, timing: Instant) -> io::Result<Document> {
   let text_len = {
     let raw = read_u64(&mut cursor)?;
-    usize::try_from(raw).map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "DB8 text length overflows usize"))?
+    usize::try_from(raw).map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "native document text length overflows usize"))?
   };
-  let text_bytes = read_bytes(&mut cursor, text_len, "DB8 text")?;
+  let text_bytes = read_bytes(&mut cursor, text_len, "native document text")?;
   let text = std::str::from_utf8(text_bytes)
     .map(std::borrow::ToOwned::to_owned)
-    .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "DB8 text is not UTF-8"))?;
+    .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "native document text is not UTF-8"))?;
 
   let asset_count = {
     let raw = read_u64(&mut cursor)?;
-    usize::try_from(raw).map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "DB8 asset count overflows usize"))?
+    usize::try_from(raw).map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "native document asset count overflows usize"))?
   };
   let mut assets = AssetStore::default();
   assets.assets.reserve(asset_count);
@@ -180,7 +180,7 @@ fn read_db8_current(mut cursor: Cursor<&[u8]>, timing: Instant) -> io::Result<Do
 
   let block_count = {
     let raw = read_u64(&mut cursor)?;
-    usize::try_from(raw).map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "DB8 block count overflows usize"))?
+    usize::try_from(raw).map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "native document block count overflows usize"))?
   };
   let mut blocks = Vec::with_capacity(block_count.min(4096));
   let mut paragraphs = Vec::new();
@@ -216,7 +216,7 @@ fn read_db8_current(mut cursor: Cursor<&[u8]>, timing: Instant) -> io::Result<Do
   reconcile_document_ids(&mut document);
   rebuild_document_sections(&mut document);
   validate_document(&document)?;
-  log_timing_lazy("db8 read", timing, || {
+  log_timing_lazy("document read", timing, || {
     format!(
       "bytes={} blocks={} paragraphs={}",
       document.text.byte_len(),
@@ -338,16 +338,16 @@ fn read_block_record(cursor: &mut Cursor<&[u8]>) -> io::Result<Block> {
   let kind = read_u8(cursor)?;
   let payload_len = {
     let raw = read_u64(cursor)?;
-    usize::try_from(raw).map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "DB8 block payload length overflows usize"))?
+    usize::try_from(raw).map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "native document block payload length overflows usize"))?
   };
-  let payload = read_bytes(cursor, payload_len, "DB8 block payload")?;
+  let payload = read_bytes(cursor, payload_len, "native document block payload")?;
   let mut payload = Cursor::new(payload);
   match kind {
     BLOCK_PARAGRAPH => read_paragraph_payload(&mut payload).map(Block::Paragraph),
     BLOCK_IMAGE => read_image_payload(&mut payload).map(Block::Image),
     BLOCK_EQUATION => read_equation_payload(&mut payload).map(Block::Equation),
     BLOCK_TABLE => read_table_payload(&mut payload).map(Block::Table),
-    _ => Err(io::Error::new(io::ErrorKind::InvalidData, "invalid DB8 block kind")),
+    _ => Err(io::Error::new(io::ErrorKind::InvalidData, "invalid native document block kind")),
   }
 }
 
@@ -399,7 +399,7 @@ fn read_section_record(cursor: &mut Cursor<&[u8]>) -> io::Result<DocumentSection
   let has_end = read_u8(cursor)? != 0;
   let reserved = read_u8(cursor)?;
   if reserved != 0 {
-    return Err(io::Error::new(io::ErrorKind::InvalidData, "invalid DB8 section reserved byte"));
+    return Err(io::Error::new(io::ErrorKind::InvalidData, "invalid native document section reserved byte"));
   }
   let heading = read_u128(cursor)?;
   let start = read_u128(cursor)?;
@@ -419,21 +419,21 @@ fn read_paragraph_payload(cursor: &mut Cursor<&[u8]>) -> io::Result<Paragraph> {
   let style = decode_paragraph_style(read_u8(cursor)?)?;
   let start = {
     let raw = read_u64(cursor)?;
-    usize::try_from(raw).map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "DB8 paragraph start overflows usize"))?
+    usize::try_from(raw).map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "native document paragraph start overflows usize"))?
   };
   let end = {
     let raw = read_u64(cursor)?;
-    usize::try_from(raw).map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "DB8 paragraph end overflows usize"))?
+    usize::try_from(raw).map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "native document paragraph end overflows usize"))?
   };
   let run_count = {
     let raw = read_u64(cursor)?;
-    usize::try_from(raw).map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "DB8 run count overflows usize"))?
+    usize::try_from(raw).map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "native document run count overflows usize"))?
   };
   let mut runs = Vec::with_capacity(run_count.min(4096));
   for _ in 0..run_count {
     let len = {
       let raw = read_u64(cursor)?;
-      usize::try_from(raw).map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "DB8 run length overflows usize"))?
+      usize::try_from(raw).map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "native document run length overflows usize"))?
     };
     let styles = read_run_styles(cursor)?;
     runs.push(TextRun { len, styles });
@@ -550,7 +550,7 @@ fn write_equation_payload(bytes: &mut Vec<u8>, equation: &EquationBlock) {
 
 #[hotpath::measure]
 fn read_table_payload(cursor: &mut Cursor<&[u8]>) -> io::Result<TableBlock> {
-  let column_count = read_len(cursor, "DB8 table column count")?;
+  let column_count = read_len(cursor, "native document table column count")?;
   let mut column_widths = Vec::with_capacity(column_count.min(64));
   for _ in 0..column_count {
     column_widths.push(match read_u8(cursor)? {
@@ -561,15 +561,15 @@ fn read_table_payload(cursor: &mut Cursor<&[u8]>) -> io::Result<TableBlock> {
     });
   }
   let header_row = read_u8(cursor)? != 0;
-  let row_count = read_len(cursor, "DB8 table row count")?;
+  let row_count = read_len(cursor, "native document table row count")?;
   let mut rows = Vec::with_capacity(row_count.min(4096));
   for _ in 0..row_count {
-    let cell_count = read_len(cursor, "DB8 table cell count")?;
+    let cell_count = read_len(cursor, "native document table cell count")?;
     let mut cells = Vec::with_capacity(cell_count.min(128));
     for _ in 0..cell_count {
       let row_span = read_u16(cursor)?;
       let col_span = read_u16(cursor)?;
-      let block_count = read_len(cursor, "DB8 table cell block count")?;
+      let block_count = read_len(cursor, "native document table cell block count")?;
       let mut blocks = Vec::with_capacity(block_count.min(64));
       for _ in 0..block_count {
         blocks.push(read_table_cell_block(cursor)?);
@@ -655,8 +655,8 @@ fn read_asset_record(cursor: &mut Cursor<&[u8]>) -> io::Result<AssetRecord> {
     None
   };
   let content_hash = read_u64(cursor)?;
-  let byte_len = read_len(cursor, "DB8 asset byte length")?;
-  let bytes = read_bytes(cursor, byte_len, "DB8 asset bytes")?.to_vec();
+  let byte_len = read_len(cursor, "native document asset byte length")?;
+  let bytes = read_bytes(cursor, byte_len, "native document asset bytes")?.to_vec();
   Ok(AssetRecord {
     id,
     mime_type,
@@ -688,7 +688,7 @@ pub fn recovery_path_for_document(path: &Path) -> PathBuf {
   let mut recovery_path = path.to_path_buf();
   let file_name = path
     .file_name()
-    .and_then(|name| name.to_str()).map_or_else(|| "untitled.db8.recovery".to_owned(), |name| format!("{name}.recovery"));
+    .and_then(|name| name.to_str()).map_or_else(|| "untitled.document.recovery".to_owned(), |name| format!("{name}.recovery"));
   recovery_path.set_file_name(file_name);
   recovery_path
 }
@@ -713,7 +713,7 @@ mod records_tests {
   #[test]
   fn normalizes_legacy_character_count_run_boundaries() {
     let cite = RunStyles {
-      semantic: RunSemanticStyle::Cite,
+      semantic: RunSemanticStyle::Custom(1),
       ..RunStyles::default()
     };
     let mut runs = vec![
@@ -734,7 +734,7 @@ mod records_tests {
   }
 
   #[test]
-  fn custom_style_slots_round_trip_through_db8() {
+  fn custom_style_slots_round_trip_through_document() {
     let document = crate::document_from_input(
       DocumentTheme::default(),
       vec![InputParagraph {
@@ -750,8 +750,8 @@ mod records_tests {
       }],
     );
 
-    let bytes = crate::db8_bytes(&document).expect("serialize custom styles");
-    let loaded = crate::read_db8_bytes(&bytes).expect("read custom styles");
+    let bytes = crate::document_bytes(&document).expect("serialize custom styles");
+    let loaded = crate::read_document_bytes(&bytes).expect("read custom styles");
 
     assert_eq!(loaded.paragraphs[0].style, ParagraphStyle::Custom(7));
     assert_eq!(loaded.paragraphs[0].runs[0].styles.semantic, RunSemanticStyle::Custom(9));

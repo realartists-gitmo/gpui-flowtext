@@ -10,7 +10,7 @@ fn single_paragraph_edits_keep_following_derived_byte_ranges_current() {
         runs: vec![plain("first")],
       },
       InputParagraph {
-        style: ParagraphStyle::Pocket,
+        style: ParagraphStyle::Custom(0),
         runs: vec![plain("second")],
       },
     ],
@@ -25,12 +25,12 @@ fn single_paragraph_edits_keep_following_derived_byte_ranges_current() {
 
 #[test]
 #[hotpath::measure]
-fn db8_round_trip_preserves_text_structure_and_styles() {
+fn document_round_trip_preserves_text_structure_and_styles() {
   let document = demo_document();
   let dir = std::env::temp_dir();
-  let path = dir.join(format!("flowstate-test-{}.db8", std::process::id()));
-  write_db8(&path, &document).unwrap();
-  let loaded = read_db8(&path).unwrap();
+  let path = dir.join(format!("flowtext-test-{}.document", std::process::id()));
+  write_document(&path, &document).unwrap();
+  let loaded = read_document(&path).unwrap();
   let _ = std::fs::remove_file(path);
 
   assert_eq!(
@@ -53,19 +53,19 @@ fn db8_round_trip_preserves_text_structure_and_styles() {
 #[test]
 #[hotpath::measure]
 fn split_and_merge_preserve_empty_styled_paragraphs() {
-  let spoken = RunStyles::default().with(RunStyle::HighlightSpoken);
+  let spoken = RunStyles::default().with(RunStyle::Highlight(1));
   let mut document = document_from_input(
     DocumentTheme::default(),
     vec![InputParagraph {
-      style: ParagraphStyle::Pocket,
-      runs: vec![run("Pocket", spoken)],
+      style: ParagraphStyle::Custom(0),
+      runs: vec![run("Custom heading", spoken)],
     }],
   );
 
   let first_len = paragraph_text_len(&document.paragraphs[0]);
   split_paragraph_at(&mut document, 0, first_len);
   assert_eq!(document.paragraphs.len(), 2);
-  assert_eq!(document.paragraphs[1].style, ParagraphStyle::Pocket);
+  assert_eq!(document.paragraphs[1].style, ParagraphStyle::Custom(0));
   assert_eq!(paragraph_text_len(&document.paragraphs[1]), 0);
   assert!(document.paragraphs[1].runs.is_empty());
 
@@ -78,11 +78,11 @@ fn split_and_merge_preserve_empty_styled_paragraphs() {
     }..DocumentOffset { paragraph: 1, byte: 0 },
   );
   assert_eq!(document.paragraphs.len(), 1);
-  assert_eq!(paragraph_text(&document, 0), "Pocket");
+  assert_eq!(paragraph_text(&document, 0), "Custom heading");
   assert_eq!(
     document.paragraphs[0].runs,
     vec![TextRun {
-      len: "Pocket".len(),
+      len: "Custom heading".len(),
       styles: spoken
     }]
   );
@@ -90,12 +90,12 @@ fn split_and_merge_preserve_empty_styled_paragraphs() {
 
 #[test]
 #[hotpath::measure]
-fn db8_round_trip_preserves_empty_styled_paragraphs() {
+fn document_round_trip_preserves_empty_styled_paragraphs() {
   let document = document_from_input(
     DocumentTheme::default(),
     vec![
       InputParagraph {
-        style: ParagraphStyle::Pocket,
+        style: ParagraphStyle::Custom(0),
         runs: Vec::new(),
       },
       InputParagraph {
@@ -104,12 +104,12 @@ fn db8_round_trip_preserves_empty_styled_paragraphs() {
       },
     ],
   );
-  let path = std::env::temp_dir().join(format!("flowstate-empty-{}.db8", std::process::id()));
-  write_db8(&path, &document).unwrap();
-  let loaded = read_db8(&path).unwrap();
+  let path = std::env::temp_dir().join(format!("flowtext-empty-{}.document", std::process::id()));
+  write_document(&path, &document).unwrap();
+  let loaded = read_document(&path).unwrap();
   let _ = std::fs::remove_file(path);
 
-  assert_eq!(loaded.paragraphs[0].style, ParagraphStyle::Pocket);
+  assert_eq!(loaded.paragraphs[0].style, ParagraphStyle::Custom(0));
   assert_eq!(paragraph_text_len(&loaded.paragraphs[0]), 0);
   assert!(loaded.paragraphs[0].runs.is_empty());
   assert_eq!(paragraph_text(&loaded, 1), "body");
@@ -117,12 +117,12 @@ fn db8_round_trip_preserves_empty_styled_paragraphs() {
 
 #[test]
 #[hotpath::measure]
-fn db8_v4_round_trip_preserves_mixed_block_order_and_assets() {
+fn document_v4_round_trip_preserves_mixed_block_order_and_assets() {
   let mut document = document_from_input(
     DocumentTheme::default(),
     vec![
       InputParagraph {
-        style: ParagraphStyle::Pocket,
+        style: ParagraphStyle::Custom(0),
         runs: vec![plain("Heading")],
       },
       InputParagraph {
@@ -164,9 +164,9 @@ fn db8_v4_round_trip_preserves_mixed_block_order_and_assets() {
     }),
   ]);
 
-  let path = std::env::temp_dir().join(format!("flowstate-blocks-{}.db8", uuid::Uuid::new_v4()));
-  write_db8(&path, &document).unwrap();
-  let loaded = read_db8(&path).unwrap();
+  let path = std::env::temp_dir().join(format!("flowtext-blocks-{}.document", uuid::Uuid::new_v4()));
+  write_document(&path, &document).unwrap();
+  let loaded = read_document(&path).unwrap();
   let _ = std::fs::remove_file(path);
 
   assert_eq!(loaded.blocks.len(), 4);
@@ -328,12 +328,12 @@ fn test_png_2x1() -> Vec<u8> {
 
 #[test]
 #[hotpath::measure]
-fn db8_v4_round_trip_preserves_table_cell_paragraph_and_run_styles() {
+fn document_v4_round_trip_preserves_table_cell_paragraph_and_run_styles() {
   let emphasized = RunStyles::default()
-    .with(RunStyle::Emphasis)
-    .with(RunStyle::HighlightSpoken);
+    .with(RunStyle::Semantic(2))
+    .with(RunStyle::Highlight(1));
   let cell_paragraph = Paragraph {
-    style: ParagraphStyle::Tag,
+    style: ParagraphStyle::Custom(3),
     byte_range: 0.."cell".len(),
     runs: vec![TextRun {
       len: "cell".len(),
@@ -367,9 +367,9 @@ fn db8_v4_round_trip_preserves_table_cell_paragraph_and_run_styles() {
     }),
   ]);
 
-  let path = std::env::temp_dir().join(format!("flowstate-table-{}.db8", uuid::Uuid::new_v4()));
-  write_db8(&path, &document).unwrap();
-  let loaded = read_db8(&path).unwrap();
+  let path = std::env::temp_dir().join(format!("flowtext-table-{}.document", uuid::Uuid::new_v4()));
+  write_document(&path, &document).unwrap();
+  let loaded = read_document(&path).unwrap();
   let _ = std::fs::remove_file(path);
 
   let Block::Table(table) = &loaded.blocks[1] else {
@@ -379,7 +379,7 @@ fn db8_v4_round_trip_preserves_table_cell_paragraph_and_run_styles() {
   let TableCellBlock::Paragraph(loaded_paragraph) = &table.rows[0].cells[0].blocks[0] else {
     panic!("expected table-cell paragraph");
   };
-  assert_eq!(loaded_paragraph.paragraph.style, ParagraphStyle::Tag);
+  assert_eq!(loaded_paragraph.paragraph.style, ParagraphStyle::Custom(3));
   assert_eq!(loaded_paragraph.paragraph.runs, cell_paragraph.runs);
   assert_eq!(loaded_paragraph.text, "cell");
 }

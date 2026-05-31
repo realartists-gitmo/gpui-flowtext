@@ -120,7 +120,7 @@ fn benchmark_edit_paths(document: &Document, stats: &DocumentStats, iterations: 
     let mut clone = document.clone();
     let end = paragraph_text_len(&clone.paragraphs[fragmented]).min(safe_mid_byte(&clone, fragmented).max(1));
     if end > 0 {
-      apply_style_to_paragraph_range(&mut clone, fragmented, 0..end, RunStyle::HighlightSpoken);
+      apply_style_to_paragraph_range(&mut clone, fragmented, 0..end, RunStyle::Highlight(1));
     }
     check_document_fidelity(&clone).failures.len()
   }));

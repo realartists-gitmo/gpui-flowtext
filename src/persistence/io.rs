@@ -14,12 +14,13 @@ use tempfile::NamedTempFile;
 
 use super::{Document, demo_document, rebuild_document_offset_index, reconcile_document_ids, rebuild_document_sections, Block, paragraph_byte_range, ParagraphOffsetIndex, DocumentIds, DocumentTheme, log_timing_lazy, AssetStore, Paragraph, ParagraphStyle, ParagraphId, BlockId, DocumentSection, paragraph_index_for_id, TableBlock, TableCellBlock, TextRun, merge_adjacent_runs, SectionId, ImageBlock, AssetId, ImageSizing, EquationBlock, EquationSyntax, EquationDisplay, TableColumnWidth, TableCell, TableRow, TableStyle, TableCellParagraph, AssetRecord, document_text_slice, paragraph_runs_len, paragraph_text_len, BlockAlignment, SectionKind, RunStyles, RunSemanticStyle, HighlightStyle};
 
-// DB8 is our on-disk document format: a magic header, a version, the raw
+// Native binary document format: a magic header, a version, the raw
 // UTF-8 text blob, then per-paragraph run metadata. Keeping the format
 // length-prefixed makes the reader resilient against trailing junk.
-const DB8_MAGIC: &[u8; 4] = b"DB8\0";
-const DB8_LEGACY_VERSION: u32 = 5;
-const DB8_VERSION: u32 = 6;
+const DOCUMENT_MAGIC: &[u8; 4] = b"GPTX";
+const LEGACY_DOCUMENT_MAGIC: &[u8; 4] = &[b'D', b'B', b'8', 0];
+const DOCUMENT_LEGACY_VERSION: u32 = 5;
+const DOCUMENT_VERSION: u32 = 6;
 
 const CHUNK_TEXT: u8 = 1;
 const CHUNK_ASSETS: u8 = 2;
@@ -35,17 +36,19 @@ const BLOCK_TABLE: u8 = 3;
 const TABLE_CELL_PARAGRAPH: u8 = 0;
 const TABLE_CELL_TABLE: u8 = 1;
 
+pub const DEFAULT_DOCUMENT_EXTENSION: &str = "gptx";
+
 #[hotpath::measure]
 pub fn load_or_create_document(path: impl AsRef<Path>) -> io::Result<Document> {
   let path = path.as_ref();
-  match read_db8(path) {
+  match read_document(path) {
     Ok(document) => Ok(document),
     Err(error) if error.kind() == io::ErrorKind::NotFound => {
       let document = demo_document();
       // Best-effort write: if the path is in a read-only directory (e.g. the
-      // default data/demo.db8 when the CWD is not writable) we still open the
+      // default demo path when the CWD is not writable) we still open the
       // demo in memory rather than crashing.
-      let _ = write_db8(path, &document);
+      let _ = write_document(path, &document);
       Ok(document)
     },
     Err(error) => Err(error),
@@ -53,55 +56,55 @@ pub fn load_or_create_document(path: impl AsRef<Path>) -> io::Result<Document> {
 }
 
 #[hotpath::measure]
-pub fn read_db8(path: impl AsRef<Path>) -> io::Result<Document> {
+pub fn read_document(path: impl AsRef<Path>) -> io::Result<Document> {
   let timing = Instant::now();
   let bytes = fs::read(path)?;
-  read_db8_bytes_with_timing(&bytes, timing)
+  read_document_bytes_with_timing(&bytes, timing)
 }
 
 #[hotpath::measure]
-pub fn read_db8_bytes(bytes: &[u8]) -> io::Result<Document> {
-  read_db8_bytes_with_timing(bytes, Instant::now())
+pub fn read_document_bytes(bytes: &[u8]) -> io::Result<Document> {
+  read_document_bytes_with_timing(bytes, Instant::now())
 }
 
 #[hotpath::measure]
-fn read_db8_bytes_with_timing(bytes: &[u8], timing: Instant) -> io::Result<Document> {
+fn read_document_bytes_with_timing(bytes: &[u8], timing: Instant) -> io::Result<Document> {
   let mut cursor = Cursor::new(bytes);
   let mut magic = [0; 4];
   cursor.read_exact(&mut magic)?;
-  if &magic != DB8_MAGIC {
-    return Err(io::Error::new(io::ErrorKind::InvalidData, "invalid DB8 magic"));
+  if &magic != DOCUMENT_MAGIC && &magic != LEGACY_DOCUMENT_MAGIC {
+    return Err(io::Error::new(io::ErrorKind::InvalidData, "invalid document magic"));
   }
   let version = read_u32(&mut cursor)?;
-  if version == DB8_LEGACY_VERSION {
-    return read_db8_current(cursor, timing);
+  if version == DOCUMENT_LEGACY_VERSION {
+    return read_document_current(cursor, timing);
   }
-  if version == DB8_VERSION {
-    return read_db8_vnext(cursor, timing);
+  if version == DOCUMENT_VERSION {
+    return read_document_vnext(cursor, timing);
   }
-  Err(io::Error::new(io::ErrorKind::InvalidData, "unsupported DB8 version"))
+  Err(io::Error::new(io::ErrorKind::InvalidData, "unsupported document version"))
 }
 
 #[hotpath::measure]
-pub fn write_db8(path: impl AsRef<Path>, document: &Document) -> io::Result<()> {
+pub fn write_document(path: impl AsRef<Path>, document: &Document) -> io::Result<()> {
   let path = path.as_ref();
   // Skip directory creation when the parent component is empty (e.g. a bare
-  // filename like "doc.db8" with no directory prefix), as create_dir_all("")
+  // filename like "doc.gptx" with no directory prefix), as create_dir_all("")
   // fails on most platforms. write_bytes_atomic handles it identically.
   if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
     fs::create_dir_all(parent)?;
   }
   let document = document_for_serialization(document);
   validate_document(&document)?;
-  let bytes = serialize_db8(&document);
+  let bytes = serialize_document(&document);
   write_bytes_atomic(path, &bytes)
 }
 
 #[hotpath::measure]
-pub fn db8_bytes(document: &Document) -> io::Result<Vec<u8>> {
+pub fn document_bytes(document: &Document) -> io::Result<Vec<u8>> {
   let document = document_for_serialization(document);
   validate_document(&document)?;
-  Ok(serialize_db8(&document))
+  Ok(serialize_document(&document))
 }
 
 #[hotpath::measure]
@@ -118,7 +121,7 @@ fn document_for_serialization(document: &Document) -> Document {
 }
 
 #[hotpath::measure]
-fn serialize_db8(document: &Document) -> Vec<u8> {
+fn serialize_document(document: &Document) -> Vec<u8> {
   let mut chunks = Vec::<(u8, Vec<u8>)>::new();
   let mut text = Vec::with_capacity(document.text.byte_len());
   for chunk in document.text.chunks() {
@@ -162,14 +165,14 @@ fn serialize_db8(document: &Document) -> Vec<u8> {
   chunks.push((CHUNK_SECTIONS, sections));
 
   let table_entry_len = 1 + 1 + 2 + 8 + 8;
-  let header_len = DB8_MAGIC.len() + std::mem::size_of::<u32>() + std::mem::size_of::<u32>() + chunks.len() * table_entry_len;
+  let header_len = DOCUMENT_MAGIC.len() + std::mem::size_of::<u32>() + std::mem::size_of::<u32>() + chunks.len() * table_entry_len;
   let payload_len = chunks.iter().map(|(_, bytes)| bytes.len()).sum::<usize>();
   let mut bytes = Vec::with_capacity(header_len + payload_len);
-  bytes.extend_from_slice(DB8_MAGIC);
-  bytes.extend_from_slice(&DB8_VERSION.to_le_bytes());
+  bytes.extend_from_slice(DOCUMENT_MAGIC);
+  bytes.extend_from_slice(&DOCUMENT_VERSION.to_le_bytes());
   write_u32(
     &mut bytes,
-    u32::try_from(chunks.len()).expect("DB8 chunk count is fixed and fits in u32"),
+    u32::try_from(chunks.len()).expect("native document chunk count is fixed and fits in u32"),
   );
   let mut offset = header_len;
   for (kind, payload) in &chunks {

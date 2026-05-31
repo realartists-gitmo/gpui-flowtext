@@ -27,10 +27,16 @@ fn inline_decorations_merge_across_segment_splits() {
 #[test]
 #[hotpath::measure]
 fn boxed_fragment_padding_is_only_applied_to_outer_emphasis_edges() {
-  let emphasized = RunStyles::default().with(RunStyle::Emphasis);
-  let highlighted_emphasis = emphasized.with(RunStyle::HighlightSpoken);
+  let emphasized = RunStyles::default().with(RunStyle::Semantic(2));
+  let highlighted_emphasis = emphasized.with(RunStyle::Highlight(1));
   let mut theme = DocumentTheme::default();
-  theme.emphasis_border_width = px(1.0);
+  theme.set_custom_semantic_style(
+    2,
+    CustomSemanticStyle {
+      border_width: Some(px(1.0)),
+      ..CustomSemanticStyle::default()
+    },
+  );
   theme.box_padding_left = px(1.28);
   theme.box_padding_right = px(1.3466667);
   let document = document_from_input(
@@ -82,6 +88,8 @@ fn custom_style_slots_resolve_from_document_theme() {
         space_x: px(2.0),
         space_y: px(3.0),
       }),
+      section_kind: None,
+      section_level: None,
     },
   );
   theme.set_custom_semantic_style(
@@ -154,7 +162,7 @@ fn dragged_text_drop_offset_adjusts_after_source_deletion() {
 #[test]
 #[hotpath::measure]
 fn move_rich_text_operation_undo_redo_restores_source_and_drop() {
-  let emphasized = RunStyles::default().with(RunStyle::Emphasis);
+  let emphasized = RunStyles::default().with(RunStyle::Semantic(2));
   let mut document = document_from_input(
     DocumentTheme::default(),
     vec![
@@ -196,7 +204,7 @@ fn move_rich_text_operation_undo_redo_restores_source_and_drop() {
     document.paragraphs[1]
       .runs
       .iter()
-      .any(|run| run.styles.semantic == RunSemanticStyle::Emphasis)
+      .any(|run| run.styles.semantic == RunSemanticStyle::Custom(2))
   );
 
   operation.undo(&mut document);
@@ -206,7 +214,7 @@ fn move_rich_text_operation_undo_redo_restores_source_and_drop() {
     document.paragraphs[0]
       .runs
       .iter()
-      .any(|run| run.styles.semantic == RunSemanticStyle::Emphasis)
+      .any(|run| run.styles.semantic == RunSemanticStyle::Custom(2))
   );
 
   operation.redo(&mut document);
@@ -216,7 +224,7 @@ fn move_rich_text_operation_undo_redo_restores_source_and_drop() {
     document.paragraphs[1]
       .runs
       .iter()
-      .any(|run| run.styles.semantic == RunSemanticStyle::Emphasis)
+      .any(|run| run.styles.semantic == RunSemanticStyle::Custom(2))
   );
 }
 
@@ -307,13 +315,13 @@ fn cross_paragraph_style_mutation_keeps_runs_and_unselected_text_intact() {
   mutate_runs_in_range(
     &mut document,
     DocumentOffset { paragraph: 0, byte: 1 }..DocumentOffset { paragraph: 1, byte: 2 },
-    |styles| styles.semantic = RunSemanticStyle::Cite,
+    |styles| styles.semantic = RunSemanticStyle::Custom(1),
   );
 
   assert_eq!(paragraph_text(&document, 0), "abc");
   assert_eq!(paragraph_text(&document, 1), "def");
-  assert_ne!(document.paragraphs[0].runs[0].styles.semantic, RunSemanticStyle::Cite);
-  assert_eq!(document.paragraphs[0].runs[1].styles.semantic, RunSemanticStyle::Cite);
-  assert_eq!(document.paragraphs[1].runs[0].styles.semantic, RunSemanticStyle::Cite);
-  assert_ne!(document.paragraphs[1].runs[1].styles.semantic, RunSemanticStyle::Cite);
+  assert_ne!(document.paragraphs[0].runs[0].styles.semantic, RunSemanticStyle::Custom(1));
+  assert_eq!(document.paragraphs[0].runs[1].styles.semantic, RunSemanticStyle::Custom(1));
+  assert_eq!(document.paragraphs[1].runs[0].styles.semantic, RunSemanticStyle::Custom(1));
+  assert_ne!(document.paragraphs[1].runs[1].styles.semantic, RunSemanticStyle::Custom(1));
 }

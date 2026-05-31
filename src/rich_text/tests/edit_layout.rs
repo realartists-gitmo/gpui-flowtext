@@ -8,7 +8,7 @@ use std::{
 #[test]
 #[hotpath::measure]
 fn paragraph_edit_helpers_preserve_text_and_styles() {
-  let emphasized = RunStyles::default().with(RunStyle::Emphasis);
+  let emphasized = RunStyles::default().with(RunStyle::Semantic(2));
   let mut document = document_from_input(
     DocumentTheme::default(),
     vec![InputParagraph {
@@ -21,7 +21,7 @@ fn paragraph_edit_helpers_preserve_text_and_styles() {
   assert_eq!(paragraph_text(&document, 0), "heyllo");
   assert_eq!(document.paragraphs[0].runs.len(), 1);
 
-  apply_style_to_paragraph_range(&mut document, 0, "hey".len().."heyll".len(), RunStyle::Emphasis);
+  apply_style_to_paragraph_range(&mut document, 0, "hey".len().."heyll".len(), RunStyle::Semantic(2));
   assert_eq!(paragraph_text(&document, 0), "heyllo");
   assert_eq!(document.paragraphs[0].runs.len(), 3);
   assert_eq!(document.paragraphs[0].runs[1].styles, emphasized);
@@ -56,7 +56,7 @@ fn document_rope_edits_keep_utf8_byte_offsets() {
 fn layout_fragments_preserve_text_when_run_boundary_splits_utf8_character() {
   let text = "state\u{2019}s overconfidence";
   let split_inside_apostrophe = "state".len() + 1;
-  let emphasized = RunStyles::default().with(RunStyle::Emphasis);
+  let emphasized = RunStyles::default().with(RunStyle::Semantic(2));
   let paragraph = Paragraph {
     style: ParagraphStyle::Normal,
     byte_range: 0..text.len(),

@@ -11,7 +11,7 @@ fn history_operation_round_trip_for_text_and_paragraph_split() {
   );
   let before = capture_document_span(&document, 0..1);
   split_paragraph_at(&mut document, 0, "alpha".len());
-  insert_text_at(&mut document, 1, 0, "NEW ", RunStyles::default().with(RunStyle::Emphasis));
+  insert_text_at(&mut document, 1, 0, "NEW ", RunStyles::default().with(RunStyle::Semantic(2)));
   let after = capture_document_span(&document, 0..2);
   assert_eq!(document.paragraphs.len(), 2);
 
@@ -24,15 +24,15 @@ fn history_operation_round_trip_for_text_and_paragraph_split() {
   assert_eq!(document.paragraphs.len(), 2);
   assert_eq!(paragraph_text(&document, 0), "alpha");
   assert_eq!(paragraph_text(&document, 1), "NEW  beta");
-  assert_eq!(document.paragraphs[1].runs[0].styles.semantic, RunSemanticStyle::Emphasis);
+  assert_eq!(document.paragraphs[1].runs[0].styles.semantic, RunSemanticStyle::Custom(2));
 }
 
 #[test]
 #[hotpath::measure]
 fn rich_fragment_insert_bulk_preserves_multiline_paste_shape() {
-  let cite = RunStyles::default().with(RunStyle::Cite);
-  let emphasis = RunStyles::default().with(RunStyle::Emphasis);
-  let underline = RunStyles::default().with(RunStyle::Underline);
+  let cite = RunStyles::default().with(RunStyle::Semantic(1));
+  let emphasis = RunStyles::default().with(RunStyle::Semantic(2));
+  let underline = RunStyles::default().with(RunStyle::Semantic(3));
   let mut document = document_from_input(
     DocumentTheme::default(),
     vec![InputParagraph {
@@ -44,11 +44,11 @@ fn rich_fragment_insert_bulk_preserves_multiline_paste_shape() {
     format: RICH_TEXT_CLIPBOARD_FORMAT.to_string(),
     paragraphs: vec![
       InputParagraph {
-        style: ParagraphStyle::Tag,
+        style: ParagraphStyle::Custom(3),
         runs: vec![run("A", emphasis), run("B", emphasis)],
       },
       InputParagraph {
-        style: ParagraphStyle::Analytic,
+        style: ParagraphStyle::Custom(4),
         runs: vec![run("C", underline)],
       },
     ],
@@ -70,7 +70,7 @@ fn rich_fragment_insert_bulk_preserves_multiline_paste_shape() {
   assert_eq!(paragraph_text(&document, 0), "hello AB");
   assert_eq!(paragraph_text(&document, 1), "Cworld");
   assert_eq!(document.paragraphs[0].style, ParagraphStyle::Normal);
-  assert_eq!(document.paragraphs[1].style, ParagraphStyle::Analytic);
+  assert_eq!(document.paragraphs[1].style, ParagraphStyle::Custom(4));
   assert_eq!(document.paragraphs[0].runs.last().unwrap().styles, emphasis);
   assert_eq!(document.paragraphs[1].runs.first().unwrap().styles, underline);
   assert_eq!(document.paragraphs[1].runs.last().unwrap().styles, cite);
@@ -81,7 +81,7 @@ fn rich_fragment_insert_bulk_preserves_multiline_paste_shape() {
 #[test]
 #[hotpath::measure]
 fn insert_rich_fragment_history_operation_round_trips_without_paragraph_snapshots() {
-  let emphasis = RunStyles::default().with(RunStyle::Emphasis);
+  let emphasis = RunStyles::default().with(RunStyle::Semantic(2));
   let mut document = document_from_input(
     DocumentTheme::default(),
     vec![InputParagraph {

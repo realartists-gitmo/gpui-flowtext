@@ -137,14 +137,6 @@ impl RichTextEditor {
   /// disarm it and undo the pending caret style. With selected text this keeps
   /// the existing document-style toggle behavior.
   pub fn toggle_inline_tool(&mut self, tool: ArmedInlineTool, cx: &mut Context<Self>) {
-    if let ArmedInlineTool::Semantic(semantic @ (RunSemanticStyle::Condensed | RunSemanticStyle::Ultracondensed)) = tool
-      && self.selection.is_caret()
-      && self.table_cell_selection_range().is_none()
-    {
-      self.apply_semantic_style_to_card_span(semantic, cx);
-      return;
-    }
-
     if self.selection.is_caret() && self.armed_inline_tool == Some(tool) {
       self.armed_inline_tool = None;
       self.apply_inline_tool_to_pending_styles(tool);
@@ -249,19 +241,19 @@ fn apply_inline_tool_to_caret_styles(editor: &RichTextEditor, tool: ArmedInlineT
       } else {
         semantic
       };
-      if styles.semantic != RunSemanticStyle::Underline {
+      if styles.semantic != RunSemanticStyle::Custom(3) {
         styles.direct_underline = false;
       }
     },
     ArmedInlineTool::Underline => {
       let paragraph_style = editor.document.paragraphs[editor.selection.head.paragraph].style;
-      let direct = matches!(paragraph_style, ParagraphStyle::Tag | ParagraphStyle::Analytic);
+      let direct = matches!(paragraph_style, ParagraphStyle::Custom(3) | ParagraphStyle::Custom(4));
       if direct {
         styles.direct_underline = !styles.direct_underline;
-      } else if styles.semantic == RunSemanticStyle::Underline {
+      } else if styles.semantic == RunSemanticStyle::Custom(3) {
         styles.semantic = RunSemanticStyle::Plain;
       } else {
-        styles.semantic = RunSemanticStyle::Underline;
+        styles.semantic = RunSemanticStyle::Custom(3);
         styles.direct_underline = false;
       }
     },
@@ -282,12 +274,12 @@ fn apply_inline_tool_to_styles(tool: ArmedInlineTool, styles: &mut RunStyles) {
   match tool {
     ArmedInlineTool::Semantic(semantic) => {
       styles.semantic = semantic;
-      if semantic != RunSemanticStyle::Underline {
+      if semantic != RunSemanticStyle::Custom(3) {
         styles.direct_underline = false;
       }
     },
     ArmedInlineTool::Underline => {
-      styles.semantic = RunSemanticStyle::Underline;
+      styles.semantic = RunSemanticStyle::Custom(3);
       styles.direct_underline = false;
     },
     ArmedInlineTool::Strikethrough => {

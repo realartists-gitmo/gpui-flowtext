@@ -28,7 +28,7 @@ impl RichTextEditor {
       Err(error) => return cx.background_executor().spawn(async move { Err(error) }),
     };
     let generation = self.edit_generation;
-    let document = send_document_without_analytic_styles(&self.document);
+    let document = self.document.clone();
     cx.spawn(async move |editor, cx| {
       let result = cx
         .background_executor()
@@ -39,7 +39,7 @@ impl RichTextEditor {
         .await;
       if result.is_ok() {
         let _ = editor.update(cx, |editor, cx| {
-          editor.last_send_db8_generation = Some(generation);
+          editor.last_send_document_generation = Some(generation);
           cx.notify();
         });
       }
@@ -77,8 +77,8 @@ impl RichTextEditor {
     })
   }
 
-  pub fn send_db8_created_since_last_saved_edit(&self) -> bool {
-    self.last_send_db8_generation.is_some()
+  pub fn send_document_created_since_last_saved_edit(&self) -> bool {
+    self.last_send_document_generation.is_some()
   }
 
   pub fn format_export_created_since_last_saved_edit(&self) -> bool {
@@ -156,7 +156,10 @@ fn unique_sibling_path(path: PathBuf) -> io::Result<PathBuf> {
   }
   let parent = path.parent().map(Path::to_path_buf).unwrap_or_default();
   let stem = path.file_stem().and_then(|stem| stem.to_str()).unwrap_or("Untitled");
-  let extension = path.extension().and_then(|extension| extension.to_str()).unwrap_or("db8");
+  let extension = path
+    .extension()
+    .and_then(|extension| extension.to_str())
+    .unwrap_or(DEFAULT_DOCUMENT_EXTENSION);
   for index in 1.. {
     let candidate = parent.join(format!("{stem}_{index}.{extension}"));
     if !candidate.exists() {
@@ -173,7 +176,8 @@ fn default_send_directory() -> PathBuf {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DocumentExportFormat {
-  Db8,
+  Native,
+  NativeWithExtension(&'static str),
   Docx,
   Pdf,
 }
@@ -182,7 +186,8 @@ impl DocumentExportFormat {
   #[hotpath::measure]
   pub fn extension(self) -> &'static str {
     match self {
-      DocumentExportFormat::Db8 => "db8",
+      DocumentExportFormat::Native => DEFAULT_DOCUMENT_EXTENSION,
+      DocumentExportFormat::NativeWithExtension(extension) => extension,
       DocumentExportFormat::Docx => "docx",
       DocumentExportFormat::Pdf => "pdf",
     }
@@ -195,92 +200,10 @@ fn write_document_export(output_path: &Path, document: &Document, format: Docume
     return adapter.write_document_export(output_path, document, format);
   }
   match format {
-    DocumentExportFormat::Db8 => write_db8(output_path, document),
+    DocumentExportFormat::Native | DocumentExportFormat::NativeWithExtension(_) => write_document(output_path, document),
     DocumentExportFormat::Docx | DocumentExportFormat::Pdf => Err(io::Error::new(
       io::ErrorKind::Unsupported,
-      "DOCX and PDF export are host-application adapters; gpui-flowtext only writes DB8 directly",
+      "DOCX and PDF export are host-application adapters; gpui-flowtext only writes its native binary format directly",
     )),
   }
-}
-
-#[hotpath::measure]
-fn send_document_without_analytic_styles(document: &Document) -> Document {
-  let mut blocks = Vec::with_capacity(document.blocks.len());
-  for block in document.blocks.iter() {
-    match block {
-      Block::Paragraph(paragraph) if paragraph.style == ParagraphStyle::Analytic => {},
-      Block::Paragraph(paragraph) => blocks.push(Block::Paragraph(paragraph.clone())),
-      Block::Table(table) => blocks.push(Block::Table(send_table_without_analytic_styles(table))),
-      Block::Image(_) | Block::Equation(_) => blocks.push(block.clone()),
-    }
-  }
-
-  let mut text = String::new();
-  let mut paragraphs = Vec::new();
-  let mut byte = 0usize;
-  for block in &mut blocks {
-    let Block::Paragraph(paragraph) = block else {
-      continue;
-    };
-    if !paragraphs.is_empty() {
-      text.push('\n');
-      byte += 1;
-    }
-    let paragraph_text = document
-      .text
-      .byte_slice(paragraph.byte_range.clone())
-      .to_string();
-    let start = byte;
-    text.push_str(&paragraph_text);
-    byte += paragraph_text.len();
-    paragraph.byte_range = start..byte;
-    paragraphs.push(paragraph.clone());
-  }
-  if paragraphs.is_empty() {
-    let paragraph = Paragraph {
-      style: ParagraphStyle::Normal,
-      byte_range: 0..0,
-      runs: Vec::new(),
-      version: 0,
-    };
-    blocks.push(Block::Paragraph(paragraph.clone()));
-    paragraphs.push(paragraph);
-  }
-
-  let block_count = blocks.len();
-  let mut filtered_document = Document {
-    text: Rope::from(text),
-    paragraphs: Arc::new(paragraphs.clone()),
-    blocks: Arc::new(blocks),
-    assets: document.assets.clone(),
-    ids: document_ids_for_shape(paragraphs.len(), block_count),
-    sections: Arc::new(Vec::new()),
-    offset_index: ParagraphOffsetIndex::new(&paragraphs),
-    theme: document.theme.clone(),
-  };
-  rebuild_document_sections(&mut filtered_document);
-  filtered_document
-}
-
-#[hotpath::measure]
-fn send_table_without_analytic_styles(table: &TableBlock) -> TableBlock {
-  let mut table = table.clone();
-  for row in &mut table.rows {
-    for cell in &mut row.cells {
-      cell.blocks = send_table_cell_blocks_without_analytic_styles(std::mem::take(&mut cell.blocks));
-    }
-  }
-  table
-}
-
-#[hotpath::measure]
-fn send_table_cell_blocks_without_analytic_styles(blocks: Vec<TableCellBlock>) -> Vec<TableCellBlock> {
-  blocks
-    .into_iter()
-    .filter_map(|block| match block {
-      TableCellBlock::Paragraph(paragraph) if paragraph.paragraph.style == ParagraphStyle::Analytic => None,
-      TableCellBlock::Paragraph(paragraph) => Some(TableCellBlock::Paragraph(paragraph)),
-      TableCellBlock::Table(table) => Some(TableCellBlock::Table(send_table_without_analytic_styles(&table))),
-    })
-    .collect()
 }

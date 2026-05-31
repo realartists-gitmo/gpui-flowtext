@@ -27,7 +27,7 @@ pub fn selection_run_styles(document: &Document, range: Range<DocumentOffset>) -
 #[must_use]
 pub fn selection_prefers_direct_underline(document: &Document, range: Range<DocumentOffset>) -> bool {
   (range.start.paragraph..=range.end.paragraph)
-    .any(|paragraph_ix| matches!(document.paragraphs[paragraph_ix].style, ParagraphStyle::Tag | ParagraphStyle::Analytic))
+    .any(|paragraph_ix| matches!(document.paragraphs[paragraph_ix].style, ParagraphStyle::Custom(3) | ParagraphStyle::Custom(4)))
 }
 
 #[hotpath::measure]
@@ -43,7 +43,7 @@ pub fn selection_all_underline_kind(document: &Document, range: Range<DocumentOf
     if direct {
       styles.direct_underline
     } else {
-      styles.semantic == RunSemanticStyle::Underline
+      styles.semantic == RunSemanticStyle::Custom(3)
     }
   })
 }

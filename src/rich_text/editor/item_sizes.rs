@@ -204,7 +204,7 @@ impl RichTextEditor {
 
       let block_start = items.len();
       let mut block_height = px(0.0);
-      if self.invisibility_mode && !paragraph_is_visible(paragraph) {
+      if self.invisibility_mode && !paragraph_is_visible(&self.document, paragraph) {
         block_item_ranges.push(block_start..items.len());
         block_heights.push(px(0.0));
         continue;

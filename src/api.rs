@@ -2,7 +2,7 @@ use std::{borrow::Cow, path::Path, sync::Arc};
 
 use gpui::Pixels;
 
-use crate::{Document, DocumentExportFormat, EditorSelection, RichTextEditorCommand};
+use crate::{Document, DocumentExportFormat, EditorSelection, HighlightStyle, ParagraphStyle, RichTextEditorCommand, RunSemanticStyle};
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct StyleId(pub Cow<'static, str>);
@@ -54,6 +54,7 @@ pub struct StyleSpec {
   pub id: StyleId,
   pub label: Cow<'static, str>,
   pub shortcut_hint: Option<Cow<'static, str>>,
+  pub style: ParagraphStyle,
 }
 
 #[derive(Clone, Debug)]
@@ -61,12 +62,22 @@ pub struct InlineStyleSpec {
   pub id: InlineStyleId,
   pub label: Cow<'static, str>,
   pub shortcut_hint: Option<Cow<'static, str>>,
+  pub style: RunSemanticStyle,
+}
+
+#[derive(Clone, Debug)]
+pub struct HighlightStyleSpec {
+  pub id: InlineStyleId,
+  pub label: Cow<'static, str>,
+  pub shortcut_hint: Option<Cow<'static, str>>,
+  pub style: HighlightStyle,
 }
 
 #[derive(Clone, Debug, Default)]
 pub struct StyleCatalog {
   pub paragraph_styles: Vec<StyleSpec>,
   pub inline_styles: Vec<InlineStyleSpec>,
+  pub highlight_styles: Vec<HighlightStyleSpec>,
 }
 
 #[derive(Clone, Debug)]

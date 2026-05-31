@@ -2,7 +2,7 @@ use std::{ops::Range, sync::Arc};
 
 use crop::Rope;
 use gpui::{Hsla, Pixels, SharedString, black, px, rgb};
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use serde::{Deserialize, Serialize};
 
 // `paragraph_widths` and `paragraph_width` are free helpers that still live in
@@ -12,11 +12,10 @@ use super::{paragraph_text_len, paragraph_width, paragraph_widths};
 pub const SOFT_LINE_BREAK: char = '\u{2028}';
 pub const SOFT_LINE_BREAK_STR: &str = "\u{2028}";
 pub const RICH_TEXT_CLIPBOARD_FORMAT: &str = "gpui-flowtext.rich-text-fragment.v1";
-pub const LEGACY_FLOWSTATE_RICH_TEXT_CLIPBOARD_FORMAT: &str = "flowstate.rich-text-fragment.v1";
 
 #[must_use]
 pub fn rich_text_clipboard_format_is_supported(format: &str) -> bool {
-  format == RICH_TEXT_CLIPBOARD_FORMAT || format == LEGACY_FLOWSTATE_RICH_TEXT_CLIPBOARD_FORMAT
+  format == RICH_TEXT_CLIPBOARD_FORMAT
 }
 
 // -- Clipboard fragment ---------------------------------------------------
@@ -322,7 +321,7 @@ pub fn rebuild_document_sections(document: &mut Document) {
   let mut stack: Vec<(usize, SectionId)> = Vec::new();
 
   for (paragraph_ix, paragraph) in document.paragraphs.iter().enumerate() {
-    let Some((level, kind)) = section_level_and_kind(paragraph.style) else {
+    let Some((level, kind)) = section_level_and_kind(document, paragraph.style) else {
       continue;
     };
     while stack.last().is_some_and(|(ancestor_level, _)| *ancestor_level >= level) {
@@ -355,26 +354,20 @@ pub fn rebuild_document_sections(document: &mut Document) {
 }
 
 #[hotpath::measure]
-const fn section_level_and_kind(style: ParagraphStyle) -> Option<(usize, SectionKind)> {
+fn section_level_and_kind(document: &Document, style: ParagraphStyle) -> Option<(usize, SectionKind)> {
   match style {
-    ParagraphStyle::Pocket => Some((0, SectionKind::Pocket)),
-    ParagraphStyle::Hat => Some((1, SectionKind::Hat)),
-    ParagraphStyle::Block => Some((2, SectionKind::BlockSection)),
-    ParagraphStyle::Tag => Some((3, SectionKind::TagSection)),
-    ParagraphStyle::Analytic => Some((3, SectionKind::Analytic)),
-    ParagraphStyle::Normal | ParagraphStyle::Undertag | ParagraphStyle::Custom(_) => None,
+    ParagraphStyle::Normal => None,
+    ParagraphStyle::Custom(slot) => {
+      let style = document.theme.custom_paragraph_styles.get(&(slot & 0x7f))?;
+      Some((usize::from(style.section_level?), SectionKind::Custom(style.section_kind.unwrap_or(slot & 0x7f))))
+    },
   }
 }
 
 #[hotpath::measure]
 const fn section_id_for_heading(paragraph_id: ParagraphId, kind: SectionKind) -> SectionId {
   let kind_slot = match kind {
-    SectionKind::Pocket => 1_u128,
-    SectionKind::Hat => 2,
-    SectionKind::BlockSection => 3,
-    SectionKind::TagSection => 4,
-    SectionKind::Analytic => 5,
-    SectionKind::Card => 6,
+    SectionKind::Custom(slot) => 1_u128 + slot as u128,
   };
   SectionId(paragraph_id.0 ^ (kind_slot << 120))
 }

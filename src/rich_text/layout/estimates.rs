@@ -14,7 +14,7 @@ pub(super) fn estimate_paragraph_item_height_with_visibility(
     && document
       .paragraphs
       .get(paragraph_ix)
-      .is_some_and(|paragraph| !paragraph_is_visible(paragraph))
+      .is_some_and(|paragraph| !paragraph_is_visible(document, paragraph))
   {
     return px(0.0);
   }

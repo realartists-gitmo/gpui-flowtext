@@ -68,17 +68,23 @@ actions!(
     Save,
     Undo,
     Redo,
-    SetParagraphPocket,
-    SetParagraphHat,
-    SetParagraphBlock,
-    SetParagraphTag,
-    SetParagraphAnalytic,
-    SetParagraphUndertag,
-    ToggleCite,
+    SetParagraphStyle0,
+    SetParagraphStyle1,
+    SetParagraphStyle2,
+    SetParagraphStyle3,
+    SetParagraphStyle4,
+    SetParagraphStyle5,
+    SetParagraphStyle6,
     ToggleUnderline,
     ToggleStrikethrough,
-    ToggleEmphasis,
-    SetHighlightSpoken,
+    ToggleSemanticStyle1,
+    ToggleSemanticStyle2,
+    ToggleSemanticStyle3,
+    ToggleSemanticStyle4,
+    ToggleSemanticStyle5,
+    SetHighlightStyle1,
+    SetHighlightStyle2,
+    SetHighlightStyle3,
     ApplyHighlightToSelection,
     ClearFormatting,
     ClearHighlight,
@@ -425,7 +431,7 @@ pub struct RichTextEditorStyleState {
 /// Runtime behavior preferences for the editor.
 ///
 /// This is intentionally separate from document data. Future settings UI can
-/// edit this object without changing saved DB8 content.
+/// edit this object without changing saved document content.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RichTextEditorConfig {
   pub smart_word_selection: bool,
@@ -835,7 +841,7 @@ pub struct RichTextEditor {
   edit_generation: u64,
   saved_generation: u64,
   next_edit_generation: u64,
-  last_send_db8_generation: Option<u64>,
+  last_send_document_generation: Option<u64>,
   last_format_export_generation: Option<u64>,
   zoom_percent: f32,
   save_status: SaveStatus,
@@ -924,7 +930,6 @@ include!("tables.rs");
 include!("media.rs");
 include!("table_equation_editing.rs");
 include!("formatting.rs");
-include!("shrink_card.rs");
 include!("action_handlers.rs");
 include!("edit_pipeline.rs");
 include!("scroll_anchor.rs");

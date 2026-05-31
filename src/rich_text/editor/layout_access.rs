@@ -8,7 +8,7 @@ impl RichTextEditor {
     let Some(paragraph) = self.document.paragraphs.get(paragraph_ix) else {
       return false;
     };
-    paragraph_is_visible(paragraph)
+    paragraph_is_visible(&self.document, paragraph)
       || (self.invisibility_mode
         && self.selected_block.is_none()
         && self.selection.is_caret()

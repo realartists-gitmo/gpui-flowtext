@@ -9,7 +9,7 @@ impl RichTextEditor {
         .selected_table_cell_paragraph()
         .map(|paragraph| paragraph.paragraph.style)
         .unwrap_or(ParagraphStyle::Normal);
-      let direct = explicit_direct.unwrap_or(matches!(paragraph_style, ParagraphStyle::Tag | ParagraphStyle::Analytic));
+      let direct = explicit_direct.unwrap_or(matches!(paragraph_style, ParagraphStyle::Custom(3) | ParagraphStyle::Custom(4)));
       let all_selected = self
         .selected_table_cell_paragraph()
         .map(|paragraph| {
@@ -19,7 +19,7 @@ impl RichTextEditor {
               if direct {
                 styles.direct_underline
               } else {
-                styles.semantic == RunSemanticStyle::Underline
+                styles.semantic == RunSemanticStyle::Custom(3)
               }
             })
         })
@@ -40,7 +40,7 @@ impl RichTextEditor {
           } else if all_selected {
             styles.semantic = RunSemanticStyle::Plain;
           } else {
-            styles.semantic = RunSemanticStyle::Underline;
+            styles.semantic = RunSemanticStyle::Custom(3);
             styles.direct_underline = false;
           }
         });
@@ -49,15 +49,15 @@ impl RichTextEditor {
     }
     if self.selection.is_caret() {
       let paragraph_style = self.document.paragraphs[self.selection.head.paragraph].style;
-      let direct = explicit_direct.unwrap_or(matches!(paragraph_style, ParagraphStyle::Tag | ParagraphStyle::Analytic));
+      let direct = explicit_direct.unwrap_or(matches!(paragraph_style, ParagraphStyle::Custom(3) | ParagraphStyle::Custom(4)));
       let mut styles = self.styles_at_caret();
       if direct {
         styles.direct_underline = !styles.direct_underline;
       } else {
-        if styles.semantic == RunSemanticStyle::Underline {
+        if styles.semantic == RunSemanticStyle::Custom(3) {
           styles.semantic = RunSemanticStyle::Plain;
         } else {
-          styles.semantic = RunSemanticStyle::Underline;
+          styles.semantic = RunSemanticStyle::Custom(3);
           styles.direct_underline = false;
         }
       }
@@ -77,7 +77,7 @@ impl RichTextEditor {
         } else {
           let new_value = !all_selected;
           if new_value {
-            styles.semantic = RunSemanticStyle::Underline;
+            styles.semantic = RunSemanticStyle::Custom(3);
             styles.direct_underline = false;
           } else {
             styles.semantic = RunSemanticStyle::Plain;

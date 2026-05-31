@@ -100,12 +100,12 @@ fn write_roundtrip_report(out: &mut String, loaded: &LoadedDocument, iterations:
   for _ in 0..iterations {
     let result = (|| {
       let dir = tempdir().map_err(|error| error.to_string())?;
-      let path = dir.path().join("roundtrip.db8");
+      let path = dir.path().join("roundtrip.gptx");
       let write_start = Instant::now();
-      write_db8(&path, &loaded.document).map_err(|error| error.to_string())?;
+      write_document(&path, &loaded.document).map_err(|error| error.to_string())?;
       write_timings.push(write_start.elapsed());
       let read_start = Instant::now();
-      let roundtrip = read_db8(&path).map_err(|error| error.to_string())?;
+      let roundtrip = read_document(&path).map_err(|error| error.to_string())?;
       read_timings.push(read_start.elapsed());
       fingerprint_matches &= fingerprint_document(&roundtrip) == original;
       Ok::<_, String>(())
@@ -116,7 +116,7 @@ fn write_roundtrip_report(out: &mut String, loaded: &LoadedDocument, iterations:
     }
   }
 
-  let _ = writeln!(out, "### DB8 Roundtrip");
+  let _ = writeln!(out, "### Native Document Roundtrip");
   let _ = writeln!(out);
   match last_error {
     Some(error) => {
@@ -130,14 +130,14 @@ fn write_roundtrip_report(out: &mut String, loaded: &LoadedDocument, iterations:
       let _ = writeln!(out, "|---|---:|---:|---:|---|");
       let _ = writeln!(
         out,
-        "| write_db8 | {:.3} | {:.3} | {:.3} | n/a |",
+        "| write_document | {:.3} | {:.3} | {:.3} | n/a |",
         ms(write_stats.min),
         ms(write_stats.mean),
         ms(write_stats.max)
       );
       let _ = writeln!(
         out,
-        "| read_db8 roundtrip | {:.3} | {:.3} | {:.3} | {} |",
+        "| read_document roundtrip | {:.3} | {:.3} | {:.3} | {} |",
         ms(read_stats.min),
         ms(read_stats.mean),
         ms(read_stats.max),
@@ -147,4 +147,3 @@ fn write_roundtrip_report(out: &mut String, loaded: &LoadedDocument, iterations:
   }
   let _ = writeln!(out);
 }
-

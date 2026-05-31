@@ -12,7 +12,7 @@ impl RichTextEditor {
       let mut highlight = SelectionStateBuilder::default();
       let mut push_run_styles = |styles: RunStyles| {
         semantic.push(styles.semantic);
-        underline.push(styles.direct_underline || styles.semantic == RunSemanticStyle::Underline);
+        underline.push(styles.direct_underline || styles.semantic == RunSemanticStyle::Custom(3));
         strikethrough.push(styles.strikethrough);
         highlight.push(styles.highlight);
       };
@@ -44,7 +44,7 @@ impl RichTextEditor {
       }
       let styles = self.styles_at_caret();
       semantic.push(styles.semantic);
-      underline.push(styles.direct_underline || styles.semantic == RunSemanticStyle::Underline);
+      underline.push(styles.direct_underline || styles.semantic == RunSemanticStyle::Custom(3));
       strikethrough.push(styles.strikethrough);
       highlight.push(styles.highlight);
     } else {
@@ -67,7 +67,7 @@ impl RichTextEditor {
           if run_start < end && run_end > start {
             let styles = run.styles;
             semantic.push(styles.semantic);
-            underline.push(styles.direct_underline || styles.semantic == RunSemanticStyle::Underline);
+            underline.push(styles.direct_underline || styles.semantic == RunSemanticStyle::Custom(3));
             strikethrough.push(styles.strikethrough);
             highlight.push(styles.highlight);
           }
@@ -264,7 +264,7 @@ impl RichTextEditor {
         .background_executor()
         .spawn(async move {
           let document = detach_document_for_background_write(&document);
-          let result = write_db8(&path, &document);
+          let result = write_document(&path, &document);
           if result.is_ok()
             && let Some(recovery_path) = recovery_path
           {

@@ -51,7 +51,7 @@ pub(super) fn rects_for_line(document: &Document, line: &LaidOutLine) -> Vec<Run
     }
   }
   let border_color = document.theme.default_text_color;
-  let border_thickness = document.theme.emphasis_border_paint_width;
+  let border_thickness = document.theme.inline_border_paint_width;
   // Word paints fills before border rules. Keeping all run borders after all
   // run highlights prevents a following highlighted run from hiding the right
   // edge of the previous boxed run.

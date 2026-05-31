@@ -206,13 +206,13 @@ fn hash_equation_display(display: EquationDisplay, hasher: &mut impl Hasher) {
 #[hotpath::measure]
 fn paragraph_style_names() -> [(ParagraphStyle, &'static str); 7] {
   [
-    (ParagraphStyle::Pocket, "Pocket"),
-    (ParagraphStyle::Hat, "Hat"),
-    (ParagraphStyle::Block, "Block"),
-    (ParagraphStyle::Tag, "Tag"),
-    (ParagraphStyle::Analytic, "Analytic"),
+    (ParagraphStyle::Custom(0), "Custom heading"),
+    (ParagraphStyle::Custom(1), "Custom subheading"),
+    (ParagraphStyle::Custom(2), "Custom block"),
+    (ParagraphStyle::Custom(3), "Custom label"),
+    (ParagraphStyle::Custom(4), "Custom section"),
     (ParagraphStyle::Normal, "Normal"),
-    (ParagraphStyle::Undertag, "Undertag"),
+    (ParagraphStyle::Custom(6), "Custom trailing"),
   ]
 }
 
@@ -220,11 +220,11 @@ fn paragraph_style_names() -> [(ParagraphStyle, &'static str); 7] {
 fn semantic_style_names() -> [(RunSemanticStyle, &'static str); 6] {
   [
     (RunSemanticStyle::Plain, "Plain"),
-    (RunSemanticStyle::Cite, "Cite"),
-    (RunSemanticStyle::Emphasis, "Emphasis"),
-    (RunSemanticStyle::Underline, "Underline"),
-    (RunSemanticStyle::Condensed, "Condensed"),
-    (RunSemanticStyle::Ultracondensed, "Ultracondensed"),
+    (RunSemanticStyle::Custom(1), "Custom semantic"),
+    (RunSemanticStyle::Custom(2), "Emphasis"),
+    (RunSemanticStyle::Custom(3), "Underline"),
+    (RunSemanticStyle::Custom(4), "Condensed"),
+    (RunSemanticStyle::Custom(5), "Ultracondensed"),
   ]
 }
 
@@ -232,9 +232,9 @@ fn semantic_style_names() -> [(RunSemanticStyle, &'static str); 6] {
 fn highlight_style_names() -> [(Option<HighlightStyle>, &'static str); 4] {
   [
     (None, "None"),
-    (Some(HighlightStyle::Spoken), "Spoken"),
-    (Some(HighlightStyle::Insert), "Insert"),
-    (Some(HighlightStyle::Alternative), "Alternative"),
+    (Some(HighlightStyle::Custom(1)), "Custom highlight"),
+    (Some(HighlightStyle::Custom(2)), "Insert"),
+    (Some(HighlightStyle::Custom(3)), "Alternative"),
   ]
 }
 

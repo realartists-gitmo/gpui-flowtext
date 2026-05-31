@@ -235,7 +235,7 @@ fn replace_block_operation_undo_redo_preserves_equation_source_changes() {
 
 #[test]
 #[hotpath::measure]
-fn default_inserted_table_shape_round_trips_through_db8() {
+fn default_inserted_table_shape_round_trips_through_document() {
   let mut document = document_from_input(
     DocumentTheme::default(),
     vec![InputParagraph {
@@ -269,9 +269,9 @@ fn default_inserted_table_shape_round_trips_through_db8() {
   });
   document.blocks = std::sync::Arc::new(vec![Block::Paragraph(document.paragraphs[0].clone()), table]);
 
-  let path = std::env::temp_dir().join(format!("flowstate-default-table-{}.db8", uuid::Uuid::new_v4()));
-  write_db8(&path, &document).unwrap();
-  let loaded = read_db8(&path).unwrap();
+  let path = std::env::temp_dir().join(format!("flowtext-default-table-{}.document", uuid::Uuid::new_v4()));
+  write_document(&path, &document).unwrap();
+  let loaded = read_document(&path).unwrap();
   let _ = std::fs::remove_file(path);
 
   let Block::Table(table) = &loaded.blocks[1] else {
@@ -285,9 +285,9 @@ fn default_inserted_table_shape_round_trips_through_db8() {
 #[test]
 #[hotpath::measure]
 fn table_cell_paragraph_clipboard_conversion_preserves_text_and_styles() {
-  let styles = RunStyles::default().with(RunStyle::Emphasis);
+  let styles = RunStyles::default().with(RunStyle::Semantic(2));
   let paragraph = InputParagraph {
-    style: ParagraphStyle::Tag,
+    style: ParagraphStyle::Custom(3),
     runs: vec![InputRun {
       text: "cell text".to_string(),
       styles,
@@ -295,19 +295,19 @@ fn table_cell_paragraph_clipboard_conversion_preserves_text_and_styles() {
   };
   let cell = table_cell_paragraph_from_input_paragraph(&paragraph);
   assert_eq!(cell.text, "cell text");
-  assert_eq!(cell.paragraph.style, ParagraphStyle::Tag);
+  assert_eq!(cell.paragraph.style, ParagraphStyle::Custom(3));
   assert_eq!(cell.paragraph.runs[0].styles, styles);
 
   let restored = input_paragraph_from_table_cell_paragraph(&cell);
   assert_eq!(input_paragraph_text(&restored), "cell text");
-  assert_eq!(restored.style, ParagraphStyle::Tag);
+  assert_eq!(restored.style, ParagraphStyle::Custom(3));
   assert_eq!(restored.runs[0].styles, styles);
 }
 
 #[test]
 #[hotpath::measure]
 fn splitting_table_cell_paragraph_preserves_text_and_run_styles() {
-  let emphasized = RunStyles::default().with(RunStyle::Emphasis);
+  let emphasized = RunStyles::default().with(RunStyle::Semantic(2));
   let mut cell = TableCell {
     blocks: vec![TableCellBlock::Paragraph(TableCellParagraph {
       paragraph: Paragraph {
@@ -352,7 +352,7 @@ fn splitting_table_cell_paragraph_preserves_text_and_run_styles() {
 #[test]
 #[hotpath::measure]
 fn merging_table_cell_paragraphs_preserves_boundary_caret_and_styles() {
-  let emphasized = RunStyles::default().with(RunStyle::Emphasis);
+  let emphasized = RunStyles::default().with(RunStyle::Semantic(2));
   let mut cell = TableCell {
     blocks: vec![
       TableCellBlock::Paragraph(TableCellParagraph {
@@ -400,8 +400,8 @@ fn merging_table_cell_paragraphs_preserves_boundary_caret_and_styles() {
 #[test]
 #[hotpath::measure]
 fn inserting_rich_paragraphs_into_table_cell_preserves_tail_and_styles() {
-  let emphasized = RunStyles::default().with(RunStyle::Emphasis);
-  let cite = RunStyles::default().with(RunStyle::Cite);
+  let emphasized = RunStyles::default().with(RunStyle::Semantic(2));
+  let cite = RunStyles::default().with(RunStyle::Semantic(1));
   let mut cell = TableCell {
     blocks: vec![TableCellBlock::Paragraph(TableCellParagraph {
       paragraph: Paragraph {

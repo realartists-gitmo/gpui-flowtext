@@ -124,12 +124,12 @@ pub fn blank_document() -> Document {
 pub fn demo_document() -> Document {
   let mut paragraphs = vec![
     InputParagraph {
-      style: ParagraphStyle::Pocket,
-      runs: vec![plain("This is a Pocket. It’s the highest-level heading in the document.")],
+      style: ParagraphStyle::Custom(0),
+      runs: vec![plain("This is a Custom heading. It’s the highest-level heading in the document.")],
     },
     InputParagraph {
-      style: ParagraphStyle::Hat,
-      runs: vec![plain("This is a Hat. It’s the second-highest level heading.")],
+      style: ParagraphStyle::Custom(1),
+      runs: vec![plain("This is a Custom subheading. It’s the second-highest level heading.")],
     },
     InputParagraph {
       style: ParagraphStyle::Normal,
@@ -141,11 +141,11 @@ pub fn demo_document() -> Document {
       style: ParagraphStyle::Normal,
       runs: vec![
         plain("This paragraph mixes "),
-        run("highlighted spoken text", RunStyles::default().with(RunStyle::HighlightSpoken)),
+        run("highlighted spoken text", RunStyles::default().with(RunStyle::Highlight(1))),
         plain(", "),
-        run("underlined words", RunStyles::default().with(RunStyle::Underline)),
+        run("underlined words", RunStyles::default().with(RunStyle::Semantic(3))),
         plain(", and "),
-        run("emphasis", RunStyles::default().with(RunStyle::Emphasis)),
+        run("emphasis", RunStyles::default().with(RunStyle::Semantic(2))),
         plain(" while preserving the document as paragraph styles plus named run styles."),
       ],
     },
@@ -155,14 +155,14 @@ pub fn demo_document() -> Document {
         run(
           "This text is both underlined and highlighted, because it is all spoken. ",
           RunStyles::default()
-            .with(RunStyle::Underline)
-            .with(RunStyle::HighlightSpoken),
+            .with(RunStyle::Semantic(3))
+            .with(RunStyle::Highlight(1)),
         ),
         run(
           "This text is both emphasized and highlighted, also all spoken.",
           RunStyles::default()
-            .with(RunStyle::Emphasis)
-            .with(RunStyle::HighlightSpoken),
+            .with(RunStyle::Semantic(2))
+            .with(RunStyle::Highlight(1)),
         ),
       ],
     },
@@ -171,20 +171,20 @@ pub fn demo_document() -> Document {
       runs: vec![
         run(
           "This text is highlighted in the insert style. Can also be ",
-          RunStyles::default().with(RunStyle::HighlightInsert),
+          RunStyles::default().with(RunStyle::Highlight(2)),
         ),
         run(
           "underlined",
           RunStyles::default()
-            .with(RunStyle::HighlightInsert)
-            .with(RunStyle::Underline),
+            .with(RunStyle::Highlight(2))
+            .with(RunStyle::Semantic(3)),
         ),
-        run(" and ", RunStyles::default().with(RunStyle::HighlightInsert)),
+        run(" and ", RunStyles::default().with(RunStyle::Highlight(2))),
         run(
           "emphasized.",
           RunStyles::default()
-            .with(RunStyle::HighlightInsert)
-            .with(RunStyle::Emphasis),
+            .with(RunStyle::Highlight(2))
+            .with(RunStyle::Semantic(2)),
         ),
       ],
     },
@@ -193,29 +193,29 @@ pub fn demo_document() -> Document {
       runs: vec![
         run(
           "Sometimes a team’s opponent will highlight in the same color as them, but you want to ‘rehighlight’ their card and read new portions. You need a different color to perform this operation. Here is a common one. Can also be ",
-          RunStyles::default().with(RunStyle::HighlightAlternative),
+          RunStyles::default().with(RunStyle::Highlight(3)),
         ),
         run(
           "underlined",
           RunStyles::default()
-            .with(RunStyle::HighlightAlternative)
-            .with(RunStyle::Underline),
+            .with(RunStyle::Highlight(3))
+            .with(RunStyle::Semantic(3)),
         ),
-        run(" and ", RunStyles::default().with(RunStyle::HighlightAlternative)),
+        run(" and ", RunStyles::default().with(RunStyle::Highlight(3))),
         run(
           "emphasized.",
           RunStyles::default()
-            .with(RunStyle::HighlightAlternative)
-            .with(RunStyle::Emphasis),
+            .with(RunStyle::Highlight(3))
+            .with(RunStyle::Semantic(2)),
         ),
       ],
     },
     InputParagraph {
-      style: ParagraphStyle::Block,
+      style: ParagraphStyle::Custom(2),
       runs: vec![plain("This is a Block. It’s the third-highest level heading.")],
     },
     InputParagraph {
-      style: ParagraphStyle::Tag,
+      style: ParagraphStyle::Custom(3),
       runs: vec![
         plain("This is a tag. It’s the fourth-highest level heading, tied with analytic."),
         plain(" Tags can also be "),
@@ -224,7 +224,7 @@ pub fn demo_document() -> Document {
       ],
     },
     InputParagraph {
-      style: ParagraphStyle::Undertag,
+      style: ParagraphStyle::Custom(6),
       runs: vec![
         plain(
           "This is an undertag. It usually goes below a tag and adds context that will be deleted when sent to opponents, and is usually never read. It can also be ",
@@ -236,7 +236,7 @@ pub fn demo_document() -> Document {
     InputParagraph {
       style: ParagraphStyle::Normal,
       runs: vec![
-        run("Codex 26", RunStyles::default().with(RunStyle::Cite)),
+        run("Codex 26", RunStyles::default().with(RunStyle::Semantic(1))),
         plain(" is a wonderful coder! (This is a citation"),
         plain(
           ". It usually begins with the special cite text to denote the read portion, then transitions into more detailed normal text to denote the unread portion. The unread text can be ",
@@ -248,26 +248,26 @@ pub fn demo_document() -> Document {
     InputParagraph {
       style: ParagraphStyle::Normal,
       runs: vec![
-        run("Usually ", RunStyles::default().with(RunStyle::Underline)),
+        run("Usually ", RunStyles::default().with(RunStyle::Semantic(3))),
         run(
           "under a tag",
           RunStyles::default()
-            .with(RunStyle::Underline)
-            .with(RunStyle::HighlightSpoken),
+            .with(RunStyle::Semantic(3))
+            .with(RunStyle::Highlight(1)),
         ),
-        run(" and a cite line, ", RunStyles::default().with(RunStyle::Underline)),
+        run(" and a cite line, ", RunStyles::default().with(RunStyle::Semantic(3))),
         run(
           "there’s",
           RunStyles::default()
-            .with(RunStyle::Underline)
-            .with(RunStyle::HighlightSpoken),
+            .with(RunStyle::Semantic(3))
+            .with(RunStyle::Highlight(1)),
         ),
-        run(" going to be the ", RunStyles::default().with(RunStyle::Underline)),
+        run(" going to be the ", RunStyles::default().with(RunStyle::Semantic(3))),
         run(
           "content of the evidence.",
           RunStyles::default()
-            .with(RunStyle::Underline)
-            .with(RunStyle::HighlightSpoken),
+            .with(RunStyle::Semantic(3))
+            .with(RunStyle::Highlight(1)),
         ),
       ],
     },
@@ -282,32 +282,32 @@ pub fn demo_document() -> Document {
         run(
           "it’ll end with the ",
           RunStyles::default()
-            .with(RunStyle::Underline)
-            .with(RunStyle::HighlightSpoken),
+            .with(RunStyle::Semantic(3))
+            .with(RunStyle::Highlight(1)),
         ),
         run(
           "next tag",
           RunStyles::default()
-            .with(RunStyle::Emphasis)
-            .with(RunStyle::HighlightSpoken),
+            .with(RunStyle::Semantic(2))
+            .with(RunStyle::Highlight(1)),
         ),
         run(
           " or ",
           RunStyles::default()
-            .with(RunStyle::Underline)
-            .with(RunStyle::HighlightSpoken),
+            .with(RunStyle::Semantic(3))
+            .with(RunStyle::Highlight(1)),
         ),
         run(
           "analytic",
           RunStyles::default()
-            .with(RunStyle::Emphasis)
-            .with(RunStyle::HighlightSpoken),
+            .with(RunStyle::Semantic(2))
+            .with(RunStyle::Highlight(1)),
         ),
         plain(", or sometimes the next heading if the evidence was the end of a section."),
       ],
     },
     InputParagraph {
-      style: ParagraphStyle::Analytic,
+      style: ParagraphStyle::Custom(4),
       runs: vec![
         plain("This is an analytic"),
         plain(", a fourth-highest level heading, tied with tag."),
@@ -322,17 +322,17 @@ pub fn demo_document() -> Document {
 
   for ix in 1..=48 {
     let style = match ix % 9 {
-      0 => ParagraphStyle::Tag,
-      3 => ParagraphStyle::Undertag,
-      6 => ParagraphStyle::Analytic,
+      0 => ParagraphStyle::Custom(3),
+      3 => ParagraphStyle::Custom(6),
+      6 => ParagraphStyle::Custom(4),
       _ => ParagraphStyle::Normal,
     };
     let spoken = RunStyles::default()
-      .with(RunStyle::Underline)
-      .with(RunStyle::HighlightSpoken);
-    let insert = RunStyles::default().with(RunStyle::HighlightInsert);
-    let alternative = RunStyles::default().with(RunStyle::HighlightAlternative);
-    let emphasis = RunStyles::default().with(RunStyle::Emphasis);
+      .with(RunStyle::Semantic(3))
+      .with(RunStyle::Highlight(1));
+    let insert = RunStyles::default().with(RunStyle::Highlight(2));
+    let alternative = RunStyles::default().with(RunStyle::Highlight(3));
+    let emphasis = RunStyles::default().with(RunStyle::Semantic(2));
 
     paragraphs.push(InputParagraph {
       style,

@@ -18,7 +18,7 @@ fn document_fingerprint(document: &Document) -> u64 {
 fn validate_document(document: &Document) -> io::Result<()> {
   let text_len = document.text.byte_len();
   if document.paragraphs.is_empty() {
-    return Err(io::Error::new(io::ErrorKind::InvalidData, "DB8 document has no paragraphs"));
+    return Err(io::Error::new(io::ErrorKind::InvalidData, "native document has no paragraphs"));
   }
   if document.ids.paragraph_ids.len() != document.paragraphs.len() {
     return Err(io::Error::new(
@@ -47,7 +47,7 @@ fn validate_document(document: &Document) -> io::Result<()> {
       ));
     }
     // Verify every run boundary falls on a valid UTF-8 char boundary. A
-    // corrupt DB8 could declare correct total run lengths but split a
+    // corrupt native document could declare correct total run lengths but split a
     // multibyte character mid-codepoint, which would panic when layout
     // later slices the rope at those offsets.
     {

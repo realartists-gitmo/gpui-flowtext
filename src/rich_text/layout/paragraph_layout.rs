@@ -135,7 +135,7 @@ pub(super) fn build_paragraph_chunk_layout_with_visibility(
     && document
       .paragraphs
       .get(paragraph_ix)
-      .is_some_and(|paragraph| !paragraph_is_visible(paragraph))
+      .is_some_and(|paragraph| !paragraph_is_visible(document, paragraph))
   {
     return None;
   }
@@ -385,4 +385,3 @@ fn push_chunk_box_rules(
     snap: RuleSnap::Vertical,
   });
 }
-

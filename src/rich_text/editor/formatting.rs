@@ -49,37 +49,11 @@ impl RichTextEditor {
 
   /// Toggle any semantic inline style for the current selection or caret.
   ///
-  /// The ribbon can call this generic method instead of matching each style to
-  /// a shortcut-specific wrapper like `toggle_cite` or `toggle_emphasis`.
   pub fn toggle_semantic_style_for_selection(&mut self, semantic: RunSemanticStyle, cx: &mut Context<Self>) {
     if self.clear_matching_armed_inline_tool(ArmedInlineTool::Semantic(semantic), cx) {
       return;
     }
     self.toggle_semantic_style(semantic, cx);
-  }
-
-  pub fn toggle_emphasis(&mut self, cx: &mut Context<Self>) {
-    self.toggle_semantic_style(RunSemanticStyle::Emphasis, cx);
-  }
-
-  pub fn toggle_cite(&mut self, cx: &mut Context<Self>) {
-    self.toggle_semantic_style(RunSemanticStyle::Cite, cx);
-  }
-
-  pub fn toggle_condensed(&mut self, cx: &mut Context<Self>) {
-    if self.selection.is_caret() && self.table_cell_selection_range().is_none() {
-      self.apply_semantic_style_to_card_span(RunSemanticStyle::Condensed, cx);
-      return;
-    }
-    self.toggle_semantic_style(RunSemanticStyle::Condensed, cx);
-  }
-
-  pub fn toggle_ultracondensed(&mut self, cx: &mut Context<Self>) {
-    if self.selection.is_caret() && self.table_cell_selection_range().is_none() {
-      self.apply_semantic_style_to_card_span(RunSemanticStyle::Ultracondensed, cx);
-      return;
-    }
-    self.toggle_semantic_style(RunSemanticStyle::Ultracondensed, cx);
   }
 
   pub fn set_highlight(&mut self, highlight: HighlightStyle, cx: &mut Context<Self>) {

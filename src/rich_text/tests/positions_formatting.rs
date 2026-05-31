@@ -46,7 +46,7 @@ fn document_position_round_trips_top_level_text_blocks() {
 
 #[test]
 #[hotpath::measure]
-fn db8_validation_rejects_zero_sized_fixed_images() {
+fn document_validation_rejects_zero_sized_fixed_images() {
   let mut document = document_from_input(
     DocumentTheme::default(),
     vec![InputParagraph {
@@ -69,8 +69,8 @@ fn db8_validation_rejects_zero_sized_fixed_images() {
     }),
   ]);
 
-  let path = std::env::temp_dir().join(format!("flowstate-invalid-image-{}.db8", uuid::Uuid::new_v4()));
-  let error = write_db8(&path, &document).unwrap_err();
+  let path = std::env::temp_dir().join(format!("flowtext-invalid-image-{}.document", uuid::Uuid::new_v4()));
+  let error = write_document(&path, &document).unwrap_err();
   assert_eq!(error.kind(), std::io::ErrorKind::InvalidData);
   let _ = std::fs::remove_file(path);
 }
@@ -147,16 +147,16 @@ fn double_click_empty_paragraph_selects_only_empty_paragraph() {
 #[test]
 #[hotpath::measure]
 fn selection_across_empty_paragraphs_and_clear_formatting_policy() {
-  let emphasized = RunStyles::default().with(RunStyle::Emphasis);
+  let emphasized = RunStyles::default().with(RunStyle::Semantic(2));
   let mut document = document_from_input(
     DocumentTheme::default(),
     vec![
       InputParagraph {
-        style: ParagraphStyle::Tag,
+        style: ParagraphStyle::Custom(3),
         runs: vec![run("tag", emphasized)],
       },
       InputParagraph {
-        style: ParagraphStyle::Pocket,
+        style: ParagraphStyle::Custom(0),
         runs: Vec::new(),
       },
       InputParagraph {
@@ -186,7 +186,7 @@ fn selection_across_empty_paragraphs_and_clear_formatting_policy() {
 #[test]
 #[hotpath::measure]
 fn run_style_full_selection_toggle_policy() {
-  let emphasized = RunStyles::default().with(RunStyle::Emphasis);
+  let emphasized = RunStyles::default().with(RunStyle::Semantic(2));
   let document = document_from_input(
     DocumentTheme::default(),
     vec![InputParagraph {
@@ -201,7 +201,7 @@ fn run_style_full_selection_toggle_policy() {
       paragraph: 0,
       byte: "all".len(),
     },
-    |styles| styles.semantic == RunSemanticStyle::Emphasis,
+    |styles| styles.semantic == RunSemanticStyle::Custom(2),
   ));
   assert!(!selection_all_run_styles(
     &document,
@@ -209,52 +209,52 @@ fn run_style_full_selection_toggle_policy() {
       paragraph: 0,
       byte: "all plain".len(),
     },
-    |styles| styles.semantic == RunSemanticStyle::Emphasis,
+    |styles| styles.semantic == RunSemanticStyle::Custom(2),
   ));
 }
 
 #[test]
 #[hotpath::measure]
 fn semantic_run_styles_are_mutually_exclusive() {
-  let mut styles = RunStyles::default().with(RunStyle::Emphasis);
-  styles.apply(RunStyle::Condensed);
-  assert_eq!(styles.semantic, RunSemanticStyle::Condensed);
-  styles.apply(RunStyle::Ultracondensed);
-  assert_eq!(styles.semantic, RunSemanticStyle::Ultracondensed);
+  let mut styles = RunStyles::default().with(RunStyle::Semantic(2));
+  styles.apply(RunStyle::Semantic(4));
+  assert_eq!(styles.semantic, RunSemanticStyle::Custom(4));
+  styles.apply(RunStyle::Semantic(5));
+  assert_eq!(styles.semantic, RunSemanticStyle::Custom(5));
 }
 
 #[test]
 #[hotpath::measure]
-fn db8_round_trip_preserves_condensed_semantic_styles() {
-  let path = std::env::temp_dir().join(format!("flowstate-semantic-{}.db8", uuid::Uuid::new_v4()));
+fn document_round_trip_preserves_condensed_semantic_styles() {
+  let path = std::env::temp_dir().join(format!("flowtext-semantic-{}.document", uuid::Uuid::new_v4()));
   let document = document_from_input(
     DocumentTheme::default(),
     vec![InputParagraph {
       style: ParagraphStyle::Normal,
       runs: vec![
-        run("condensed", RunStyles::default().with(RunStyle::Condensed)),
+        run("condensed", RunStyles::default().with(RunStyle::Semantic(4))),
         run(
           " ultra",
           RunStyles::default()
-            .with(RunStyle::Ultracondensed)
-            .with(RunStyle::HighlightSpoken),
+            .with(RunStyle::Semantic(5))
+            .with(RunStyle::Highlight(1)),
         ),
       ],
     }],
   );
-  write_db8(&path, &document).unwrap();
-  let loaded = read_db8(&path).unwrap();
+  write_document(&path, &document).unwrap();
+  let loaded = read_document(&path).unwrap();
   let _ = std::fs::remove_file(path);
 
-  assert_eq!(loaded.paragraphs[0].runs[0].styles.semantic, RunSemanticStyle::Condensed);
-  assert_eq!(loaded.paragraphs[0].runs[1].styles.semantic, RunSemanticStyle::Ultracondensed);
-  assert_eq!(loaded.paragraphs[0].runs[1].styles.highlight, Some(HighlightStyle::Spoken));
+  assert_eq!(loaded.paragraphs[0].runs[0].styles.semantic, RunSemanticStyle::Custom(4));
+  assert_eq!(loaded.paragraphs[0].runs[1].styles.semantic, RunSemanticStyle::Custom(5));
+  assert_eq!(loaded.paragraphs[0].runs[1].styles.highlight, Some(HighlightStyle::Custom(1)));
 }
 
 #[test]
 #[hotpath::measure]
-fn db8_save_can_replace_existing_file() {
-  let path = std::env::temp_dir().join(format!("flowstate-replace-{}.db8", uuid::Uuid::new_v4()));
+fn document_save_can_replace_existing_file() {
+  let path = std::env::temp_dir().join(format!("flowtext-replace-{}.document", uuid::Uuid::new_v4()));
   let first = document_from_input(
     DocumentTheme::default(),
     vec![InputParagraph {
@@ -270,9 +270,9 @@ fn db8_save_can_replace_existing_file() {
     }],
   );
 
-  write_db8(&path, &first).unwrap();
-  write_db8(&path, &second).unwrap();
-  let loaded = read_db8(&path).unwrap();
+  write_document(&path, &first).unwrap();
+  write_document(&path, &second).unwrap();
+  let loaded = read_document(&path).unwrap();
   let _ = std::fs::remove_file(path);
 
   assert_eq!(paragraph_text(&loaded, 0), "second");

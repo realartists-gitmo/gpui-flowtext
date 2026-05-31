@@ -31,6 +31,7 @@ pub(super) struct ParagraphPrep {
 
 pub(super) struct ParagraphPrepBatchRequest {
   pub(super) text: Rope,
+  pub(super) theme: DocumentTheme,
   pub(super) edit_generation: u64,
   pub(super) invisibility_mode: bool,
   pub(super) requested: usize,
@@ -69,6 +70,7 @@ pub(super) fn build_paragraph_prep_batch(request: ParagraphPrepBatchRequest) -> 
     processed_requests = request_ix + 1;
     let Some(prep) = build_paragraph_prep_from_parts(
       &request.text,
+      &request.theme,
       source.paragraph_ix,
       &source.paragraph,
       source.byte_range.clone(),
@@ -127,6 +129,7 @@ pub(super) fn paragraph_prep_batch_request(
     .collect();
   ParagraphPrepBatchRequest {
     text: document.text.clone(),
+    theme: document.theme.clone(),
     edit_generation,
     invisibility_mode,
     requested,
@@ -139,6 +142,7 @@ pub(super) fn paragraph_prep_batch_request(
 #[hotpath::measure]
 fn build_paragraph_prep_from_parts(
   text: &Rope,
+  theme: &DocumentTheme,
   paragraph_ix: usize,
   paragraph: &Paragraph,
   paragraph_byte_range: Range<usize>,
@@ -153,7 +157,7 @@ fn build_paragraph_prep_from_parts(
   };
 
   if invisibility_mode && matches!(paragraph.style, ParagraphStyle::Normal) {
-    let Some((text, runs)) = projected_visible_paragraph_text_and_runs_from_text(text, paragraph, paragraph_byte_range.clone()) else {
+    let Some((text, runs)) = projected_visible_paragraph_text_and_runs_from_text(text, theme, paragraph, paragraph_byte_range.clone()) else {
       // A Normal paragraph with no visible (cite/spoken/...) runs has nothing to
       // project, so it is hidden rather than rendered as a blank visible line.
       return Some(ParagraphPrep {
@@ -183,7 +187,7 @@ fn build_paragraph_prep_from_parts(
     });
   }
 
-  if invisibility_mode && !paragraph_is_visible(paragraph) {
+  if invisibility_mode && !paragraph_is_visible_for_theme(theme, paragraph) {
     return Some(ParagraphPrep {
       key,
       paragraph_ix,
@@ -223,6 +227,7 @@ pub(super) fn build_paragraph_prep(
   let paragraph_byte_range = paragraph_byte_range(document, paragraph_ix);
   build_paragraph_prep_from_parts(
     &document.text,
+    &document.theme,
     paragraph_ix,
     paragraph,
     paragraph_byte_range,
@@ -243,18 +248,19 @@ fn paragraph_text_from_rope(text: &Rope, range: Range<usize>) -> String {
 #[hotpath::measure]
 fn projected_visible_paragraph_text_and_runs_from_text(
   text: &Rope,
+  theme: &DocumentTheme,
   paragraph: &Paragraph,
   paragraph_byte_range: Range<usize>,
 ) -> Option<(String, Vec<TextRun>)> {
   let paragraph_len = paragraph_text_len(paragraph);
-  let visible_run_count = paragraph.runs.iter().filter(|run| run.len > 0 && run_is_visible(run.styles)).count();
+  let visible_run_count = paragraph.runs.iter().filter(|run| run.len > 0 && run_is_visible_for_theme(theme, run.styles)).count();
   if visible_run_count == 0 {
     return None;
   }
   let visible_text_len = paragraph
     .runs
     .iter()
-    .filter(|run| run_is_visible(run.styles))
+    .filter(|run| run_is_visible_for_theme(theme, run.styles))
     .map(|run| run.len)
     .sum::<usize>();
   let mut output = String::with_capacity(visible_text_len.saturating_add(visible_run_count.saturating_sub(1)));
@@ -265,7 +271,7 @@ fn projected_visible_paragraph_text_and_runs_from_text(
     let start = byte;
     let end = start + run.len;
     byte = end;
-    if start >= end || end > paragraph_len || !run_is_visible(run.styles) {
+    if start >= end || end > paragraph_len || !run_is_visible_for_theme(theme, run.styles) {
       continue;
     }
     if !output.is_empty() {
@@ -312,8 +318,11 @@ mod prep_tests {
   #[test]
   #[hotpath::measure]
   fn normal_prep_captures_text_runs_and_wrap_breaks() {
+    let mut theme = DocumentTheme::default();
+    theme.set_invisibility_visible_semantic_style(1);
+    theme.set_invisibility_visible_highlight_style(1);
     let document = document_from_input(
-      DocumentTheme::default(),
+      theme,
       vec![InputParagraph {
         style: ParagraphStyle::Normal,
         runs: vec![input_run("alpha beta/gamma", RunStyles::default())],
@@ -333,15 +342,18 @@ mod prep_tests {
   #[hotpath::measure]
   fn invisibility_prep_projects_visible_runs() {
     let cite = RunStyles {
-      semantic: RunSemanticStyle::Cite,
+      semantic: RunSemanticStyle::Custom(1),
       ..RunStyles::default()
     };
     let spoken = RunStyles {
-      highlight: Some(HighlightStyle::Spoken),
+      highlight: Some(HighlightStyle::Custom(1)),
       ..RunStyles::default()
     };
+    let mut theme = DocumentTheme::default();
+    theme.set_invisibility_visible_semantic_style(1);
+    theme.set_invisibility_visible_highlight_style(1);
     let document = document_from_input(
-      DocumentTheme::default(),
+      theme,
       vec![InputParagraph {
         style: ParagraphStyle::Normal,
         runs: vec![

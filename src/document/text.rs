@@ -24,12 +24,7 @@ pub struct DocumentIds {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub enum SectionKind {
-  Pocket,
-  Hat,
-  BlockSection,
-  TagSection,
-  Analytic,
-  Card,
+  Custom(u8),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -44,13 +39,7 @@ pub struct DocumentSection {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub enum ParagraphStyle {
-  Pocket,
-  Hat,
-  Block,
-  Tag,
-  Analytic,
   Normal,
-  Undertag,
   Custom(u8),
 }
 
@@ -58,13 +47,7 @@ impl ParagraphStyle {
   #[must_use]
   pub const fn slot(self) -> u64 {
     match self {
-      Self::Pocket => 0,
-      Self::Hat => 1,
-      Self::Block => 2,
-      Self::Tag => 3,
-      Self::Analytic => 4,
       Self::Normal => 5,
-      Self::Undertag => 6,
       Self::Custom(slot) => 128 + slot as u64,
     }
   }

@@ -76,7 +76,7 @@ pub(super) fn build_layout_with_visibility(
     let Some(source_paragraph) = document.paragraphs.get(paragraph_ix) else {
       continue;
     };
-    if !paragraph_is_visible(source_paragraph) {
+    if !paragraph_is_visible(document, source_paragraph) {
       paragraphs.push(LaidOutParagraph {
         index: paragraph_ix,
         cache_key: paragraph_cache_key(document, source_paragraph),
@@ -147,7 +147,7 @@ pub(super) fn build_single_paragraph_layout_with_visibility(
     && document
       .paragraphs
       .get(paragraph_ix)
-      .is_some_and(|paragraph| !paragraph_is_visible(paragraph))
+      .is_some_and(|paragraph| !paragraph_is_visible(document, paragraph))
   {
     return LayoutState {
       blocks: vec![LaidOutBlock::Paragraph(LaidOutParagraph {

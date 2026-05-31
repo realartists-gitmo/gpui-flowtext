@@ -31,7 +31,7 @@ fn run_benchmark_suite(options: &BenchmarkOptions, window: &mut Window, cx: &mut
 
   let sources = benchmark_sources(options);
   if sources.is_empty() {
-    let _ = writeln!(report, "No `.db8` files or explicit benchmark documents were found.");
+    let _ = writeln!(report, "No `.gptx` files or explicit benchmark documents were found.");
     return report;
   }
 
