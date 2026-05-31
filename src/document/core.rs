@@ -11,6 +11,13 @@ use super::{paragraph_text_len, paragraph_width, paragraph_widths};
 
 pub const SOFT_LINE_BREAK: char = '\u{2028}';
 pub const SOFT_LINE_BREAK_STR: &str = "\u{2028}";
+pub const RICH_TEXT_CLIPBOARD_FORMAT: &str = "gpui-flowtext.rich-text-fragment.v1";
+pub const LEGACY_FLOWSTATE_RICH_TEXT_CLIPBOARD_FORMAT: &str = "flowstate.rich-text-fragment.v1";
+
+#[must_use]
+pub fn rich_text_clipboard_format_is_supported(format: &str) -> bool {
+  format == RICH_TEXT_CLIPBOARD_FORMAT || format == LEGACY_FLOWSTATE_RICH_TEXT_CLIPBOARD_FORMAT
+}
 
 // -- Clipboard fragment ---------------------------------------------------
 

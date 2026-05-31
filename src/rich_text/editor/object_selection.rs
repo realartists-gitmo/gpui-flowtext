@@ -309,7 +309,7 @@ impl RichTextEditor {
     let mut assets = Vec::new();
     collect_block_assets(block, &self.document.assets, &mut assets);
     Some(RichClipboardFragment {
-      format: "flowstate.rich-text-fragment.v1".to_string(),
+      format: RICH_TEXT_CLIPBOARD_FORMAT.to_string(),
       paragraphs: Vec::new(),
       blocks: vec![input_block_from_block(block)],
       assets,
@@ -362,7 +362,7 @@ impl RichTextEditor {
       }
     }
     (!blocks.is_empty()).then_some(RichClipboardFragment {
-      format: "flowstate.rich-text-fragment.v1".to_string(),
+      format: RICH_TEXT_CLIPBOARD_FORMAT.to_string(),
       paragraphs: Vec::new(),
       blocks,
       assets,

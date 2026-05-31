@@ -32,7 +32,7 @@ pub fn selected_rich_fragment(document: &Document, range: Range<DocumentOffset>)
     });
   }
   RichClipboardFragment {
-    format: "flowstate.rich-text-fragment.v1".to_owned(),
+    format: RICH_TEXT_CLIPBOARD_FORMAT.to_owned(),
     paragraphs,
     blocks: Vec::new(),
     assets: Vec::new(),

@@ -41,7 +41,7 @@ fn rich_fragment_insert_bulk_preserves_multiline_paste_shape() {
     }],
   );
   let fragment = RichClipboardFragment {
-    format: "flowstate.rich-text-fragment.v1".to_string(),
+    format: RICH_TEXT_CLIPBOARD_FORMAT.to_string(),
     paragraphs: vec![
       InputParagraph {
         style: ParagraphStyle::Tag,
@@ -90,7 +90,7 @@ fn insert_rich_fragment_history_operation_round_trips_without_paragraph_snapshot
     }],
   );
   let fragment = RichClipboardFragment {
-    format: "flowstate.rich-text-fragment.v1".to_string(),
+    format: RICH_TEXT_CLIPBOARD_FORMAT.to_string(),
     paragraphs: vec![InputParagraph {
       style: ParagraphStyle::Normal,
       runs: vec![run(" BETA", emphasis)],

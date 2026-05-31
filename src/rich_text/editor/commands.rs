@@ -461,7 +461,7 @@ impl RichTextEditor {
       }
       if let Some(fragment) = serde_json::from_str::<RichClipboardFragment>(metadata)
         .ok()
-        .filter(|fragment| fragment.format == "flowstate.rich-text-fragment.v1")
+        .filter(|fragment| rich_text_clipboard_format_is_supported(&fragment.format))
       {
         self.paste_cache = Some(PasteCache::Rich {
           metadata: metadata.to_string(),

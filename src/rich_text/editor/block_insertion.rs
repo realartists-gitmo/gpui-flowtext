@@ -1,5 +1,3 @@
-const RICH_TEXT_CLIPBOARD_FORMAT: &str = "flowstate.rich-text-fragment.v1";
-
 #[hotpath::measure_all]
 impl RichTextEditor {
   pub fn insert_toolkit_text_at_caret(&mut self, paragraphs: Vec<InputParagraph>, cx: &mut Context<Self>) {
@@ -323,7 +321,7 @@ impl RichTextEditor {
     let paragraph_style = self.document.paragraphs[self.selection.head.paragraph].style;
     let styles = self.styles_at_caret();
     let fragment = RichClipboardFragment {
-      format: "flowstate.rich-text-fragment.v1".to_string(),
+      format: RICH_TEXT_CLIPBOARD_FORMAT.to_string(),
       paragraphs: normalized
         .split('\n')
         .map(|line| InputParagraph {

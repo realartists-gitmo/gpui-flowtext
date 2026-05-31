@@ -6,7 +6,7 @@ impl RichTextEditor {
     }
     let paragraph_style = self.document.paragraphs[self.selection.head.paragraph].style;
     let fragment = RichClipboardFragment {
-      format: "flowstate.rich-text-fragment.v1".to_string(),
+      format: RICH_TEXT_CLIPBOARD_FORMAT.to_string(),
       paragraphs: vec![InputParagraph {
         style: paragraph_style,
         runs: vec![InputRun {
@@ -73,7 +73,7 @@ impl RichTextEditor {
     let cell = self.selected_table_cell()?;
     if let (Some(range), Some(paragraph)) = (self.table_cell_selection_range(), self.selected_table_cell_paragraph()) {
       return Some(RichClipboardFragment {
-        format: "flowstate.rich-text-fragment.v1".to_string(),
+        format: RICH_TEXT_CLIPBOARD_FORMAT.to_string(),
         paragraphs: vec![input_paragraph_from_table_cell_range(paragraph, range)],
         blocks: Vec::new(),
         assets: Vec::new(),
@@ -88,7 +88,7 @@ impl RichTextEditor {
       })
       .collect::<Vec<_>>();
     (!paragraphs.is_empty()).then_some(RichClipboardFragment {
-      format: "flowstate.rich-text-fragment.v1".to_string(),
+      format: RICH_TEXT_CLIPBOARD_FORMAT.to_string(),
       paragraphs,
       blocks: Vec::new(),
       assets: Vec::new(),
