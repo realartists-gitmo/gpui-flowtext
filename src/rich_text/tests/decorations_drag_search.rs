@@ -29,8 +29,12 @@ fn inline_decorations_merge_across_segment_splits() {
 fn boxed_fragment_padding_is_only_applied_to_outer_emphasis_edges() {
   let emphasized = RunStyles::default().with(RunStyle::Emphasis);
   let highlighted_emphasis = emphasized.with(RunStyle::HighlightSpoken);
+  let mut theme = DocumentTheme::default();
+  theme.emphasis_border_width = px(1.0);
+  theme.box_padding_left = px(1.28);
+  theme.box_padding_right = px(1.3466667);
   let document = document_from_input(
-    DocumentTheme::default(),
+    theme,
     vec![InputParagraph {
       style: ParagraphStyle::Normal,
       runs: vec![run("left", emphasized), run("middle", highlighted_emphasis), run("right", emphasized)],
@@ -55,6 +59,76 @@ fn boxed_fragment_padding_is_only_applied_to_outer_emphasis_edges() {
       + boxed_fragment_padding(&fragments, 1, left_pad, right_pad).0,
     px(0.0)
   );
+}
+
+#[test]
+#[hotpath::measure]
+fn custom_style_slots_resolve_from_document_theme() {
+  let mut theme = DocumentTheme::default();
+  theme.set_custom_paragraph_style(
+    2,
+    CustomParagraphStyle {
+      font_size: px(20.0),
+      font_family: None,
+      color: gpui::rgb(0x0012_3456).into(),
+      bold: true,
+      italic: true,
+      underline: ThemeUnderline::Single,
+      align: CustomParagraphAlign::Center,
+      spacing_before: px(3.0),
+      spacing_after: px(4.0),
+      border: Some(CustomParagraphBorder {
+        width: px(1.0),
+        space_x: px(2.0),
+        space_y: px(3.0),
+      }),
+    },
+  );
+  theme.set_custom_semantic_style(
+    4,
+    CustomSemanticStyle {
+      font_size: Some(px(15.0)),
+      font_family: None,
+      color: Some(gpui::rgb(0x0065_4321).into()),
+      bold: Some(true),
+      italic: Some(false),
+      underline: Some(ThemeUnderline::Double),
+      border_width: Some(px(2.0)),
+    },
+  );
+  theme.set_custom_highlight_style(
+    7,
+    CustomHighlightStyle {
+      color: gpui::rgb(0x00ab_cdef).into(),
+    },
+  );
+  let document = document_from_input(
+    theme,
+    vec![InputParagraph {
+      style: ParagraphStyle::Custom(2),
+      runs: vec![run(
+        "custom",
+        RunStyles {
+          semantic: RunSemanticStyle::Custom(4),
+          highlight: Some(HighlightStyle::Custom(7)),
+          ..RunStyles::default()
+        },
+      )],
+    }],
+  );
+
+  let paragraph = &document.paragraphs[0];
+  let text = paragraph_text(&document, 0);
+  let p_format = paragraph_format(&document, paragraph.style);
+  let fragments = formatted_fragments_for_range(&document, &p_format, paragraph, &(0..text.len()), &text);
+
+  assert_eq!(p_format.font_size, px(20.0));
+  assert!(matches!(p_format.align, ParagraphAlign::Center));
+  assert!(p_format.border.is_some());
+  assert_eq!(fragments[0].format.font_size, px(15.0));
+  assert_eq!(fragments[0].format.color, gpui::rgb(0x0065_4321).into());
+  assert_eq!(fragments[0].format.highlight, Some(gpui::rgb(0x00ab_cdef).into()));
+  assert_eq!(fragments[0].format.border_width, px(2.0));
 }
 
 #[test]

@@ -28,7 +28,6 @@ const DISABLE_SCROLL_LIMITING_FUNCTIONS: bool = true; // cfg!(target_os = "linux
 const SCROLL_FOREGROUND_OVERSCAN_PX: f32 = 384.0;
 const SCROLL_FOREGROUND_MATERIALIZE_BUDGET_MS: u64 = 8;
 const SCROLL_FOREGROUND_MAX_CHUNK_LINES: usize = 96;
-const SCROLLBAR_DRAG_MAX_FPS: usize = 60;
 const TYPING_PREFETCH_SUPPRESSION_WINDOW: Duration = Duration::from_millis(150);
 const OFFSCREEN_LAYOUT_CACHE_OVERSCAN_PARAGRAPHS: usize = 24;
 const OFFSCREEN_PREP_CACHE_OVERSCAN_PARAGRAPHS: usize = 160;
@@ -96,10 +95,9 @@ actions!(
 );
 
 // If you add a user-triggerable editor action here, also add it to
-// `crate::commands::CommandId`, `COMMAND_SPECS`, and
-// `register_default_keybindings` when it has a default shortcut. This keeps
-// keyboard rebinding, command-palette/menu labels, and "show shortcut" UI from
-// drifting away from the editor's action surface.
+// `RichTextEditorCommand`. Host applications should map their own command
+// catalogs and default keybindings onto that library action surface so command
+// palettes, menus, and shortcut UI stay aligned with editor behavior.
 
 // Direction enums used internally by the movement helpers.
 #[derive(Clone, Copy)]
@@ -692,7 +690,6 @@ struct ScrollAnchorLock {
 }
 
 struct RenderLayoutSnapshot {
-  width: Pixels,
   item_sizes: Rc<Vec<Size<Pixels>>>,
   items: RenderVirtualItems,
   hide_initial_layout: bool,

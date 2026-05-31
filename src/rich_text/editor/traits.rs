@@ -31,7 +31,6 @@ impl Render for RichTextEditor {
       });
     }
     let render_layout = self.prepare_render_layout(window, cx);
-    let width = render_layout.width;
     let item_sizes = render_layout.item_sizes.clone();
     let scroll_handle = self.scroll_handle.clone();
     let render_item_sizes = item_sizes.clone();
@@ -230,7 +229,6 @@ impl Render for RichTextEditor {
             })
             .collect::<Vec<_>>()
         })
-        .with_fixed_cross_axis_size(width)
         .track_scroll(&scroll_handle)
         .when(hide_initial_layout, |this| this.opacity(0.0)),
       )
@@ -244,7 +242,6 @@ impl Render for RichTextEditor {
           .child(
             Scrollbar::vertical(&self.scroll_handle)
               .scrollbar_show(ScrollbarShow::Always)
-              .when(!DISABLE_SCROLL_LIMITING_FUNCTIONS, |this| this.max_fps(SCROLLBAR_DRAG_MAX_FPS)),
           ),
       )
   }

@@ -91,6 +91,53 @@ pub struct DocumentTheme {
   pub ultracondensed_bold: bool,
   pub ultracondensed_italic: bool,
   pub ultracondensed_underline: ThemeUnderline,
+  pub custom_paragraph_styles: FxHashMap<u8, CustomParagraphStyle>,
+  pub custom_semantic_styles: FxHashMap<u8, CustomSemanticStyle>,
+  pub custom_highlight_styles: FxHashMap<u8, CustomHighlightStyle>,
+}
+
+#[derive(Clone, Debug)]
+pub struct CustomParagraphStyle {
+  pub font_size: Pixels,
+  pub font_family: Option<SharedString>,
+  pub color: Hsla,
+  pub bold: bool,
+  pub italic: bool,
+  pub underline: ThemeUnderline,
+  pub align: CustomParagraphAlign,
+  pub spacing_before: Pixels,
+  pub spacing_after: Pixels,
+  pub border: Option<CustomParagraphBorder>,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum CustomParagraphAlign {
+  #[default]
+  Left,
+  Center,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct CustomParagraphBorder {
+  pub width: Pixels,
+  pub space_x: Pixels,
+  pub space_y: Pixels,
+}
+
+#[derive(Clone, Debug)]
+pub struct CustomSemanticStyle {
+  pub font_size: Option<Pixels>,
+  pub font_family: Option<SharedString>,
+  pub color: Option<Hsla>,
+  pub bold: Option<bool>,
+  pub italic: Option<bool>,
+  pub underline: Option<ThemeUnderline>,
+  pub border_width: Option<Pixels>,
+}
+
+#[derive(Clone, Debug)]
+pub struct CustomHighlightStyle {
+  pub color: Hsla,
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -116,28 +163,28 @@ impl Default for DocumentTheme {
       pageless_inset_top: px(16.0),
       pageless_inset_bottom: px(24.0),
       body_font_size: pt(11.0),
-      cite_font_size: pt(13.0),
-      condensed_font_size: pt(8.0),
-      ultracondensed_font_size: pt(3.0),
-      pocket_font_size: pt(26.0),
-      hat_font_size: pt(22.0),
-      block_font_size: pt(16.0),
-      tag_font_size: pt(13.0),
-      undertag_font_size: pt(12.0),
+      cite_font_size: pt(11.0),
+      condensed_font_size: pt(11.0),
+      ultracondensed_font_size: pt(11.0),
+      pocket_font_size: pt(11.0),
+      hat_font_size: pt(11.0),
+      block_font_size: pt(11.0),
+      tag_font_size: pt(11.0),
+      undertag_font_size: pt(11.0),
       line_spacing: 259.0 / 240.0,
       // GPUI exposes shaped ascent/descent but not Word/DirectWrite's
       // full line gap here. Add a Calibri-like internal leading term so
       // Word's 1.08 multiple is applied to a Word-like line box.
       line_gap_fraction: 0.18,
       paragraph_after: pt(8.0),
-      pocket_before: pt(12.0),
-      hat_before: pt(2.0),
-      block_before: pt(2.0),
-      tag_before: pt(2.0),
-      pocket_border_width: border_eighth_points(24.0),
-      pocket_border_space_x: pt(4.0),
-      pocket_border_space_y: pt(1.0),
-      emphasis_border_width: border_eighth_points(8.0),
+      pocket_before: px(0.0),
+      hat_before: px(0.0),
+      block_before: px(0.0),
+      tag_before: px(0.0),
+      pocket_border_width: px(0.0),
+      pocket_border_space_x: px(0.0),
+      pocket_border_space_y: px(0.0),
+      emphasis_border_width: px(0.0),
       // DOCX stores this border as 1pt, but Word's display renderer
       // paints inline text borders as a screen hairline. Feed the snapper
       // a sub-pixel logical width so it resolves to one device pixel
@@ -170,15 +217,15 @@ impl Default for DocumentTheme {
       snap_underline_rules_to_pixels: true,
       double_underline_top_from_baseline: pt(17.79 - 16.5),
       double_underline_gap: pt(1.20),
-      highlight_spoken: rgb(0x0000_ff00).into(),
-      highlight_insert: rgb(0x00d9_d9d9).into(),
-      highlight_alternative: rgb(0x0000_ffff).into(),
+      highlight_spoken: rgb(0x00ff_f59d).into(),
+      highlight_insert: rgb(0x00ff_f59d).into(),
+      highlight_alternative: rgb(0x00ff_f59d).into(),
       pocket_color: black(),
       hat_color: black(),
       block_color: black(),
       tag_color: black(),
-      analytic_color: rgb(0x001f_3864).into(),
-      undertag_color: rgb(0x0038_5623).into(),
+      analytic_color: black(),
+      undertag_color: black(),
       cite_color: black(),
       underline_color: black(),
       emphasis_color: black(),
@@ -187,40 +234,57 @@ impl Default for DocumentTheme {
       normal_bold: false,
       normal_italic: false,
       normal_underline: ThemeUnderline::None,
-      pocket_bold: true,
+      pocket_bold: false,
       pocket_italic: false,
       pocket_underline: ThemeUnderline::None,
-      hat_bold: true,
+      hat_bold: false,
       hat_italic: false,
-      hat_underline: ThemeUnderline::Double,
-      block_bold: true,
+      hat_underline: ThemeUnderline::None,
+      block_bold: false,
       block_italic: false,
-      block_underline: ThemeUnderline::Single,
-      tag_bold: true,
+      block_underline: ThemeUnderline::None,
+      tag_bold: false,
       tag_italic: false,
       tag_underline: ThemeUnderline::None,
-      analytic_bold: true,
+      analytic_bold: false,
       analytic_italic: false,
       analytic_underline: ThemeUnderline::None,
       undertag_bold: false,
-      undertag_italic: true,
+      undertag_italic: false,
       undertag_underline: ThemeUnderline::None,
-      cite_bold: true,
+      cite_bold: false,
       cite_italic: false,
       cite_underline: ThemeUnderline::None,
       underline_bold: false,
       underline_italic: false,
-      underline_underline: ThemeUnderline::Single,
-      emphasis_bold: true,
+      underline_underline: ThemeUnderline::None,
+      emphasis_bold: false,
       emphasis_italic: false,
-      emphasis_underline: ThemeUnderline::Single,
+      emphasis_underline: ThemeUnderline::None,
       condensed_bold: false,
       condensed_italic: false,
       condensed_underline: ThemeUnderline::None,
       ultracondensed_bold: false,
       ultracondensed_italic: false,
       ultracondensed_underline: ThemeUnderline::None,
+      custom_paragraph_styles: FxHashMap::default(),
+      custom_semantic_styles: FxHashMap::default(),
+      custom_highlight_styles: FxHashMap::default(),
     }
+  }
+}
+
+impl DocumentTheme {
+  pub fn set_custom_paragraph_style(&mut self, slot: u8, style: CustomParagraphStyle) {
+    self.custom_paragraph_styles.insert(slot & 0x7f, style);
+  }
+
+  pub fn set_custom_semantic_style(&mut self, slot: u8, style: CustomSemanticStyle) {
+    self.custom_semantic_styles.insert(slot & 0x7f, style);
+  }
+
+  pub fn set_custom_highlight_style(&mut self, slot: u8, style: CustomHighlightStyle) {
+    self.custom_highlight_styles.insert(slot & 0x7f, style);
   }
 }
 

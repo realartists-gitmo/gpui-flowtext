@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 crop = "0.4.3"
 gpui = "0.2.2"
-gpui-component = { version = "0.5.1", path = "../flowstate/vendor/gpui-component" }
+gpui-component = "0.5.1"
 hotpath = "0.16.1"
 imagesize = "0.13"
 mathjax_svg = "3.2.0"
