@@ -1,3 +1,4 @@
+mod api;
 mod collaboration;
 mod demo;
 mod document;
@@ -5,6 +6,7 @@ mod edit_ops;
 mod persistence;
 mod rich_text;
 
+pub use api::*;
 pub use collaboration::*;
 pub use demo::*;
 pub use document::*;
