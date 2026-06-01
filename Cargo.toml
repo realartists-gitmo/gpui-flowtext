@@ -2,6 +2,11 @@
 name = "gpui-flowtext"
 version = "0.1.0"
 edition = "2024"
+description = "A GPUI rich text editor component and document engine."
+license = "MIT"
+repository = "https://github.com/realartists-gitmo/gpui-flowtext"
+homepage = "https://github.com/realartists-gitmo/gpui-flowtext"
+documentation = "https://github.com/realartists-gitmo/gpui-flowtext"
 
 [dependencies]
 crop = "0.4.3"
