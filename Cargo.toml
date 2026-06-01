@@ -8,12 +8,17 @@ repository = "https://github.com/realartists-gitmo/gpui-flowtext"
 homepage = "https://github.com/realartists-gitmo/gpui-flowtext"
 documentation = "https://github.com/realartists-gitmo/gpui-flowtext"
 
+
+[lints.clippy]
+too_many_arguments = "allow"
+items_after_test_module = "allow"
 [dependencies]
 crop = "0.4.3"
 gpui = "0.2.2"
 gpui-component = "0.5.1"
 hotpath = "0.16.1"
 imagesize = "0.13"
+postcard = { version = "1.1.3", features = ["use-std"] }
 mathjax_svg = "3.2.0"
 resvg = "0.45.1"
 rustc-hash = "2.1.2"
@@ -22,12 +27,13 @@ serde_json = "1.0.150"
 tempfile = "3"
 unicode-segmentation = "1"
 uuid = { version = "1.23.1", features = ["serde", "v4"] }
+flowstate-collab = { version = "0.1.0", path = "../flowstate-collab" }
 
 [target.'cfg(any(target_os = "macos", target_os = "linux"))'.dependencies]
 cosmic-text = { version = "0.14.2", default-features = false, features = ["shape-run-cache"] }
-hotpath-cpu-support = { package = "hotpath", version = "0.16.1", features = ["hotpath-cpu"], optional = true }
+
 
 [features]
 hotpath = ["hotpath/hotpath"]
-hotpath-cpu = ["hotpath", "dep:hotpath-cpu-support"]
+hotpath-cpu = ["hotpath"]
 hotpath-alloc = ["hotpath", "hotpath/hotpath-alloc"]

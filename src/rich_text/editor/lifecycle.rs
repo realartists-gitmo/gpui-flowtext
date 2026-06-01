@@ -37,6 +37,7 @@ impl RichTextEditor {
       redo_stack: Vec::new(),
       identity_map,
       last_collaboration_edit: None,
+      collaboration_role: None,
       recovery_write_in_progress: false,
       recovery_write_pending: false,
       last_recovery_generation: 0,
@@ -137,6 +138,7 @@ impl RichTextEditor {
     self.undo_stack = Vec::new();
     self.redo_stack = Vec::new();
     self.last_collaboration_edit = None;
+    self.collaboration_role = None;
     self.recovery_write_in_progress = false;
     self.recovery_write_pending = false;
     self.paste_cache = None;
@@ -202,6 +204,37 @@ impl RichTextEditor {
     self.last_collaboration_edit.as_ref()
   }
 
+  pub fn last_collaboration_operations(&self) -> Option<&[CanonicalOperation]> {
+    self
+      .last_collaboration_edit
+      .as_ref()
+      .map(|edit| edit.operations.as_slice())
+  }
+
+  pub fn last_collaboration_operation_bytes(&self) -> Option<Vec<u8>> {
+    self
+      .last_collaboration_edit
+      .as_ref()
+      .and_then(|edit| crate::encode_canonical_operations(&edit.operations))
+  }
+  pub fn collaboration_role(&self) -> Option<CollaborationRole> {
+    self.collaboration_role
+  }
+
+  pub fn set_collaboration_role(&mut self, role: Option<CollaborationRole>, cx: &mut Context<Self>) {
+    if self.collaboration_role == role {
+      return;
+    }
+    self.collaboration_role = role;
+    cx.notify();
+  }
+
+  pub fn can_write_collaboration(&self) -> bool {
+    self
+      .collaboration_role
+      .is_none_or(CollaborationRole::can_write)
+  }
+
   pub fn paragraph_id(&self, paragraph_ix: usize) -> Option<ParagraphId> {
     self.identity_map.paragraph_id(paragraph_ix)
   }
@@ -218,6 +251,13 @@ impl RichTextEditor {
     for operation in operations {
       self.apply_canonical_operation(operation);
     }
+    self.identity_map.reconcile(&self.document);
+    self.last_collaboration_edit = None;
+    self.after_text_mutation(cx);
+  }
+
+  pub fn replace_document_from_collaboration(&mut self, document: Document, cx: &mut Context<Self>) {
+    self.document = document;
     self.identity_map.reconcile(&self.document);
     self.last_collaboration_edit = None;
     self.after_text_mutation(cx);
@@ -367,5 +407,4 @@ impl RichTextEditor {
   pub fn selection(&self) -> &EditorSelection {
     &self.selection
   }
-
 }

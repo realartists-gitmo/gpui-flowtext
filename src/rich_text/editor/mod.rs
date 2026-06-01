@@ -178,7 +178,20 @@ impl EditorSelection {
   }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CollaborationRole {
+  Owner,
+  Editor,
+  Viewer,
+}
+
+impl CollaborationRole {
+  #[must_use]
+  pub const fn can_write(self) -> bool {
+    matches!(self, Self::Owner | Self::Editor)
+  }
+}
+
 struct EditRecord {
   before_selection: EditorSelection,
   before_generation: u64,
@@ -849,6 +862,7 @@ pub struct RichTextEditor {
   redo_stack: Vec<EditRecord>,
   identity_map: DocumentIdentityMap,
   last_collaboration_edit: Option<CollaborationEdit>,
+  collaboration_role: Option<CollaborationRole>,
   recovery_write_in_progress: bool,
   recovery_write_pending: bool,
   last_recovery_generation: u64,

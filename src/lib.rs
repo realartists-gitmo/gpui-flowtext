@@ -30,8 +30,8 @@ pub mod style {
 
 pub mod editor_api {
   pub use crate::{
-    ArmedInlineTool, EditorEvent, EditorEventSink, EditorSelection, LayoutPolicy, RichTextDocumentElement, RichTextEditor, RichTextEditorCommand,
-    RichTextEditorConfig, RichTextEditorStyleState, SaveStatus, SelectionState,
+    ArmedInlineTool, EditorEvent, EditorEventSink, EditorSelection, LayoutPolicy, RichTextDocumentElement, RichTextEditor,
+    RichTextEditorCommand, RichTextEditorConfig, RichTextEditorStyleState, SaveStatus, SelectionState,
   };
 }
 

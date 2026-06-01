@@ -147,6 +147,155 @@ pub enum CanonicalOperation {
   ReplaceDocument,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+enum WireCanonicalOperation {
+  InsertText {
+    paragraph: ParagraphId,
+    byte: usize,
+    text: String,
+    styles: RunStyles,
+  },
+  DeleteRange {
+    start_paragraph: ParagraphId,
+    start_byte: usize,
+    end_paragraph: ParagraphId,
+    end_byte: usize,
+  },
+  SplitParagraph {
+    paragraph: ParagraphId,
+    byte: usize,
+    new_paragraph: ParagraphId,
+  },
+  JoinParagraphs {
+    first: ParagraphId,
+    second: ParagraphId,
+  },
+  SetParagraphStyle {
+    paragraph: ParagraphId,
+    style: ParagraphStyle,
+  },
+  SetRunStyles {
+    paragraph: ParagraphId,
+    range: Range<usize>,
+    styles: RunStyles,
+  },
+}
+
+impl WireCanonicalOperation {
+  fn from_canonical(operation: &CanonicalOperation) -> Option<Self> {
+    match operation {
+      CanonicalOperation::InsertText {
+        paragraph,
+        byte,
+        text,
+        styles,
+      } => Some(Self::InsertText {
+        paragraph: *paragraph,
+        byte: *byte,
+        text: text.clone(),
+        styles: *styles,
+      }),
+      CanonicalOperation::DeleteRange {
+        start_paragraph,
+        start_byte,
+        end_paragraph,
+        end_byte,
+      } => Some(Self::DeleteRange {
+        start_paragraph: *start_paragraph,
+        start_byte: *start_byte,
+        end_paragraph: *end_paragraph,
+        end_byte: *end_byte,
+      }),
+      CanonicalOperation::SplitParagraph {
+        paragraph,
+        byte,
+        new_paragraph,
+      } => Some(Self::SplitParagraph {
+        paragraph: *paragraph,
+        byte: *byte,
+        new_paragraph: *new_paragraph,
+      }),
+      CanonicalOperation::JoinParagraphs { first, second } => Some(Self::JoinParagraphs {
+        first: *first,
+        second: *second,
+      }),
+      CanonicalOperation::SetParagraphStyle { paragraph, style } => Some(Self::SetParagraphStyle {
+        paragraph: *paragraph,
+        style: *style,
+      }),
+      CanonicalOperation::SetRunStyles { paragraph, range, styles } => Some(Self::SetRunStyles {
+        paragraph: *paragraph,
+        range: range.clone(),
+        styles: *styles,
+      }),
+      CanonicalOperation::InsertBlock { .. }
+      | CanonicalOperation::DeleteBlock { .. }
+      | CanonicalOperation::MoveBlock { .. }
+      | CanonicalOperation::ReplaceParagraphSpan { .. }
+      | CanonicalOperation::ReplaceBlock { .. }
+      | CanonicalOperation::ReplaceDocument => None,
+    }
+  }
+
+  fn into_canonical(self) -> CanonicalOperation {
+    match self {
+      Self::InsertText {
+        paragraph,
+        byte,
+        text,
+        styles,
+      } => CanonicalOperation::InsertText {
+        paragraph,
+        byte,
+        text,
+        styles,
+      },
+      Self::DeleteRange {
+        start_paragraph,
+        start_byte,
+        end_paragraph,
+        end_byte,
+      } => CanonicalOperation::DeleteRange {
+        start_paragraph,
+        start_byte,
+        end_paragraph,
+        end_byte,
+      },
+      Self::SplitParagraph {
+        paragraph,
+        byte,
+        new_paragraph,
+      } => CanonicalOperation::SplitParagraph {
+        paragraph,
+        byte,
+        new_paragraph,
+      },
+      Self::JoinParagraphs { first, second } => CanonicalOperation::JoinParagraphs { first, second },
+      Self::SetParagraphStyle { paragraph, style } => CanonicalOperation::SetParagraphStyle { paragraph, style },
+      Self::SetRunStyles { paragraph, range, styles } => CanonicalOperation::SetRunStyles { paragraph, range, styles },
+    }
+  }
+}
+
+pub fn encode_canonical_operations(operations: &[CanonicalOperation]) -> Option<Vec<u8>> {
+  let wire_operations = operations
+    .iter()
+    .map(WireCanonicalOperation::from_canonical)
+    .collect::<Option<Vec<_>>>()?;
+  postcard::to_stdvec(&wire_operations).ok()
+}
+
+pub fn decode_canonical_operations(bytes: &[u8]) -> Option<Vec<CanonicalOperation>> {
+  postcard::from_bytes::<Vec<WireCanonicalOperation>>(bytes)
+    .ok()
+    .map(|operations| {
+      operations
+        .into_iter()
+        .map(WireCanonicalOperation::into_canonical)
+        .collect()
+    })
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct CollaborationEdit {
   pub operations: Vec<CanonicalOperation>,

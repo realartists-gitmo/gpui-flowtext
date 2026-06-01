@@ -68,10 +68,19 @@ pub(super) fn paragraph_is_visible(document: &Document, paragraph: &Paragraph) -
 pub(super) fn paragraph_is_visible_for_theme(theme: &DocumentTheme, paragraph: &Paragraph) -> bool {
   match paragraph.style {
     ParagraphStyle::Normal => {},
-    ParagraphStyle::Custom(slot) if theme.invisibility_visible_paragraph_styles.contains(&(slot & 0x7f)) => return true,
+    ParagraphStyle::Custom(slot)
+      if theme
+        .invisibility_visible_paragraph_styles
+        .contains(&(slot & 0x7f)) =>
+    {
+      return true;
+    },
     ParagraphStyle::Custom(_) => {},
   }
-  paragraph.runs.iter().any(|run| run_is_visible_for_theme(theme, run.styles))
+  paragraph
+    .runs
+    .iter()
+    .any(|run| run_is_visible_for_theme(theme, run.styles))
 }
 
 pub(super) const INVISIBILITY_PROJECTED_VERSION_OFFSET: u64 = 0x9E37_79B9_7F4A_7C15;
@@ -119,11 +128,19 @@ pub(super) fn run_is_visible(document: &Document, styles: RunStyles) -> bool {
 pub(super) fn run_is_visible_for_theme(theme: &DocumentTheme, styles: RunStyles) -> bool {
   match styles.semantic {
     RunSemanticStyle::Plain => {},
-    RunSemanticStyle::Custom(slot) if theme.invisibility_visible_semantic_styles.contains(&(slot & 0x7f)) => return true,
+    RunSemanticStyle::Custom(slot)
+      if theme
+        .invisibility_visible_semantic_styles
+        .contains(&(slot & 0x7f)) =>
+    {
+      return true;
+    },
     RunSemanticStyle::Custom(_) => {},
   }
   match styles.highlight {
-    Some(HighlightStyle::Custom(slot)) => theme.invisibility_visible_highlight_styles.contains(&(slot & 0x7f)),
+    Some(HighlightStyle::Custom(slot)) => theme
+      .invisibility_visible_highlight_styles
+      .contains(&(slot & 0x7f)),
     None => false,
   }
 }

@@ -1,4 +1,3 @@
-
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub enum RunSemanticStyle {
   #[default]
@@ -48,6 +47,7 @@ impl From<RunStyle> for RunStyles {
 
 #[hotpath::measure_all]
 impl RunStyles {
+  #[hotpath::skip]
   pub const fn apply(&mut self, style: RunStyle) {
     match style {
       RunStyle::Plain => self.semantic = RunSemanticStyle::Plain,
@@ -57,18 +57,21 @@ impl RunStyles {
   }
 
   #[must_use]
+  #[hotpath::skip]
   pub const fn with(mut self, style: RunStyle) -> Self {
     self.apply(style);
     self
   }
 
   #[must_use]
+  #[hotpath::skip]
   pub const fn with_direct_underline(mut self) -> Self {
     self.direct_underline = true;
     self
   }
 
   #[must_use]
+  #[hotpath::skip]
   pub const fn with_strikethrough(mut self) -> Self {
     self.strikethrough = true;
     self

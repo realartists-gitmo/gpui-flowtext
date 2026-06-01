@@ -1,4 +1,3 @@
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Paragraph {
   pub style: ParagraphStyle,

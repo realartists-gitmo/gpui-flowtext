@@ -1,4 +1,3 @@
-#[hotpath::measure]
 pub const fn bump_paragraph_version(paragraph: &mut Paragraph) {
   paragraph.version = paragraph.version.wrapping_add(1);
 }
@@ -104,4 +103,3 @@ pub fn delete_cross_paragraph_range(document: &mut Document, range: Range<Docume
   rebuild_document_offset_index(document);
   rebuild_document_sections(document);
 }
-

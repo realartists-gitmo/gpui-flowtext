@@ -51,9 +51,41 @@ pub enum RichTextEditorCommand {
   InsertSoftLineBreak,
 }
 
+fn rich_text_mutation_command(command: RichTextEditorCommand) -> bool {
+  use RichTextEditorCommand::*;
+  matches!(
+    command,
+    DeleteWordBackward
+      | DeleteWordForward
+      | Cut
+      | Paste
+      | Undo
+      | Redo
+      | SetParagraphStyle(_)
+      | ToggleSemanticStyle(_)
+      | ToggleUnderline
+      | ToggleStrikethrough
+      | SetHighlightStyle(_)
+      | ApplyHighlightToSelection
+      | ClearFormatting
+      | ClearHighlight
+      | InsertImage
+      | InsertTable
+      | InsertEquation
+      | Backspace
+      | Delete
+      | InsertNewline
+      | InsertSoftLineBreak
+  )
+}
+
 #[hotpath::measure_all]
 impl RichTextEditor {
   pub fn dispatch_window_command(&mut self, command: RichTextEditorCommand, window: &mut Window, cx: &mut Context<Self>) {
+    if !self.can_write_collaboration() && rich_text_mutation_command(command) {
+      cx.notify();
+      return;
+    }
     use RichTextEditorCommand::*;
 
     match command {
@@ -302,6 +334,10 @@ impl RichTextEditor {
   }
 
   pub fn insert_text_command(&mut self, text: &str, cx: &mut Context<Self>) {
+    if !self.can_write_collaboration() {
+      cx.notify();
+      return;
+    }
     if self.insert_single_grapheme_fast_path(text, cx) {
       return;
     }
@@ -309,6 +345,10 @@ impl RichTextEditor {
   }
 
   pub fn backspace_command(&mut self, cx: &mut Context<Self>) {
+    if !self.can_write_collaboration() {
+      cx.notify();
+      return;
+    }
     if !self.selection.is_caret() && self.selection_crosses_object_blocks(self.selection.normalized()) {
       let _ = self.delete_selection_with_document_snapshot(cx);
       return;
@@ -317,6 +357,10 @@ impl RichTextEditor {
   }
 
   pub fn delete_forward_command(&mut self, cx: &mut Context<Self>) {
+    if !self.can_write_collaboration() {
+      cx.notify();
+      return;
+    }
     if !self.selection.is_caret() && self.selection_crosses_object_blocks(self.selection.normalized()) {
       let _ = self.delete_selection_with_document_snapshot(cx);
       return;
@@ -511,5 +555,4 @@ impl RichTextEditor {
     self.clear_drop_preview();
     self.insert_toolkit_paragraphs_as_blocks(drag.paragraphs.clone(), cx);
   }
-
 }

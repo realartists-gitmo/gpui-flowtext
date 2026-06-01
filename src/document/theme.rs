@@ -68,6 +68,7 @@ pub struct CustomParagraphBorder {
 }
 
 #[derive(Clone, Debug)]
+#[derive(Default)]
 pub struct CustomSemanticStyle {
   pub font_size: Option<Pixels>,
   pub font_family: Option<SharedString>,
@@ -78,19 +79,6 @@ pub struct CustomSemanticStyle {
   pub border_width: Option<Pixels>,
 }
 
-impl Default for CustomSemanticStyle {
-  fn default() -> Self {
-    Self {
-      font_size: None,
-      font_family: None,
-      color: None,
-      bold: None,
-      italic: None,
-      underline: None,
-      border_width: None,
-    }
-  }
-}
 
 #[derive(Clone, Debug)]
 pub struct CustomHighlightStyle {

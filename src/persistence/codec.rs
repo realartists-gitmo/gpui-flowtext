@@ -1,4 +1,3 @@
-
 #[hotpath::measure]
 fn read_u8(cursor: &mut Cursor<&[u8]>) -> io::Result<u8> {
   let mut bytes = [0; 1];
@@ -84,7 +83,6 @@ fn write_string(bytes: &mut Vec<u8>, value: &str) {
   bytes.extend_from_slice(value.as_bytes());
 }
 
-#[hotpath::measure]
 const fn encode_block_alignment(alignment: BlockAlignment) -> u8 {
   match alignment {
     BlockAlignment::Left => 0,
@@ -103,7 +101,6 @@ fn decode_block_alignment(value: u8) -> io::Result<BlockAlignment> {
   }
 }
 
-#[hotpath::measure]
 const fn encode_paragraph_style(style: ParagraphStyle) -> u8 {
   match style {
     ParagraphStyle::Custom(0) => 0,
@@ -132,7 +129,6 @@ fn decode_paragraph_style(value: u8) -> io::Result<ParagraphStyle> {
   }
 }
 
-#[hotpath::measure]
 const fn encode_section_kind(kind: SectionKind) -> u8 {
   match kind {
     SectionKind::Custom(slot) => slot & 0x7f,
@@ -176,7 +172,6 @@ fn read_run_styles(cursor: &mut Cursor<&[u8]>) -> io::Result<RunStyles> {
   })
 }
 
-#[hotpath::measure]
 const fn encode_run_semantic_style(style: RunSemanticStyle) -> u8 {
   match style {
     RunSemanticStyle::Plain => 0,
@@ -203,7 +198,6 @@ fn decode_run_semantic_style(value: u8) -> io::Result<RunSemanticStyle> {
   }
 }
 
-#[hotpath::measure]
 const fn encode_highlight_style(style: Option<HighlightStyle>) -> u8 {
   match style {
     None => 0,

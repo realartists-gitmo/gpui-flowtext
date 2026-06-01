@@ -236,8 +236,12 @@ pub fn new_section_id() -> SectionId {
 #[must_use]
 pub fn document_ids_for_shape(paragraph_count: usize, block_count: usize) -> DocumentIds {
   DocumentIds {
-    paragraph_ids: std::iter::repeat_with(new_paragraph_id).take(paragraph_count).collect(),
-    block_ids: std::iter::repeat_with(new_block_id).take(block_count).collect(),
+    paragraph_ids: std::iter::repeat_with(new_paragraph_id)
+      .take(paragraph_count)
+      .collect(),
+    block_ids: std::iter::repeat_with(new_block_id)
+      .take(block_count)
+      .collect(),
   }
 }
 
@@ -246,7 +250,10 @@ pub fn reconcile_document_ids(document: &mut Document) {
   while document.ids.paragraph_ids.len() < document.paragraphs.len() {
     document.ids.paragraph_ids.push(new_paragraph_id());
   }
-  document.ids.paragraph_ids.truncate(document.paragraphs.len());
+  document
+    .ids
+    .paragraph_ids
+    .truncate(document.paragraphs.len());
 
   while document.ids.block_ids.len() < document.blocks.len() {
     document.ids.block_ids.push(new_block_id());
@@ -324,9 +331,15 @@ pub fn rebuild_document_sections(document: &mut Document) {
     let Some((level, kind)) = section_level_and_kind(document, paragraph.style) else {
       continue;
     };
-    while stack.last().is_some_and(|(ancestor_level, _)| *ancestor_level >= level) {
+    while stack
+      .last()
+      .is_some_and(|(ancestor_level, _)| *ancestor_level >= level)
+    {
       if let Some((_, section_id)) = stack.pop() {
-        for section in sections.iter_mut().filter(|section| section.id == section_id) {
+        for section in sections
+          .iter_mut()
+          .filter(|section| section.id == section_id)
+        {
           section.end_paragraph_exclusive = paragraph_id_at(document, paragraph_ix);
         }
       }
@@ -359,12 +372,14 @@ fn section_level_and_kind(document: &Document, style: ParagraphStyle) -> Option<
     ParagraphStyle::Normal => None,
     ParagraphStyle::Custom(slot) => {
       let style = document.theme.custom_paragraph_styles.get(&(slot & 0x7f))?;
-      Some((usize::from(style.section_level?), SectionKind::Custom(style.section_kind.unwrap_or(slot & 0x7f))))
+      Some((
+        usize::from(style.section_level?),
+        SectionKind::Custom(style.section_kind.unwrap_or(slot & 0x7f)),
+      ))
     },
   }
 }
 
-#[hotpath::measure]
 const fn section_id_for_heading(paragraph_id: ParagraphId, kind: SectionKind) -> SectionId {
   let kind_slot = match kind {
     SectionKind::Custom(slot) => 1_u128 + slot as u128,
