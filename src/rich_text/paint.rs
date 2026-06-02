@@ -12,6 +12,7 @@ pub(super) fn paint_layout(
   drag_selection: Option<&EditorSelection>,
   show_caret: bool,
   caret_width: Pixels,
+  external_carets: &[ExternalCaret],
   window: &mut Window,
   cx: &mut App,
 ) {
@@ -92,6 +93,17 @@ pub(super) fn paint_layout(
   {
     caret.size.width = caret_width;
     window.paint_quad(fill(snap_vertical_rule_to_device_pixels(caret, window), black()));
+  }
+  for external_caret in external_carets {
+    if let Some(mut caret) = caret_bounds(layout, external_caret.offset, bounds.origin)
+      && caret.intersects(&content_mask)
+    {
+      caret.size.width = px(2.0);
+      window.paint_quad(fill(
+        snap_vertical_rule_to_device_pixels(caret, window),
+        Background::from(rgb(external_caret.color_rgb)),
+      ));
+    }
   }
   log_timing_lazy("paint layout", timing, || {
     format!("blocks={} visible_paragraphs={visible_count}", layout.block_count())

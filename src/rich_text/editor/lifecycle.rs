@@ -66,6 +66,7 @@ impl RichTextEditor {
       autoscroll_active: false,
       caret_visible: true,
       caret_blink_active: false,
+      external_carets: Vec::new(),
       last_text_input_at: None,
       pending_typing_prefetch_resume: false,
       resume_chunk_prefetch_after_typing: false,
@@ -164,6 +165,7 @@ impl RichTextEditor {
     self.autoscroll_active = false;
     self.caret_visible = false;
     self.caret_blink_active = false;
+    self.external_carets.clear();
     self.last_text_input_at = None;
     self.pending_typing_prefetch_resume = false;
     self.resume_chunk_prefetch_after_typing = false;
@@ -406,5 +408,21 @@ impl RichTextEditor {
 
   pub fn selection(&self) -> &EditorSelection {
     &self.selection
+  }
+
+  pub fn set_external_carets(&mut self, external_carets: Vec<ExternalCaret>, cx: &mut Context<Self>) {
+    if self.external_carets != external_carets {
+      self.external_carets = external_carets;
+      cx.notify();
+    }
+  }
+
+  pub fn external_carets_for_paragraph(&self, paragraph_ix: usize) -> Vec<ExternalCaret> {
+    self
+      .external_carets
+      .iter()
+      .filter(|caret| caret.offset.paragraph == paragraph_ix)
+      .cloned()
+      .collect()
   }
 }

@@ -161,7 +161,7 @@ impl Element for RichTextDocumentElement {
     cx: &mut App,
   ) {
     if let Some((layout, bounds)) = self.layout.positioned() {
-      paint_layout(layout.as_ref(), bounds, None, None, false, px(1.0), window, cx);
+      paint_layout(layout.as_ref(), bounds, None, None, false, px(1.0), &[], window, cx);
     }
   }
 }
@@ -239,9 +239,10 @@ impl Element for VirtualParagraphChunkElement {
     window: &mut Window,
     cx: &mut App,
   ) {
-    let (selection, drag_selection, caret_offset, caret_width) = {
+    let (selection, drag_selection, caret_offset, caret_width, external_carets) = {
       let editor = self.editor.read(cx);
       let drag_selection = editor.drag_source_selection();
+      let external_carets = editor.external_carets_for_paragraph(self.paragraph_ix);
       (
         editor.selection.clone(),
         drag_selection,
@@ -252,6 +253,7 @@ impl Element for VirtualParagraphChunkElement {
           && editor.focus_handle.is_focused(window))
         .then_some(editor.selection.head),
         editor.caret_paint_width(),
+        external_carets,
       )
     };
     if let Some((layout, bounds)) = self.layout.positioned() {
@@ -271,6 +273,10 @@ impl Element for VirtualParagraphChunkElement {
               .is_some_and(|next_byte| paragraph.contains_byte(next_byte))
         })
       });
+      let external_carets = external_carets
+        .into_iter()
+        .filter(|caret| caret_offset_belongs_to_chunk(layout.as_ref(), caret.offset))
+        .collect::<Vec<_>>();
       paint_layout(
         layout.as_ref(),
         bounds,
@@ -278,11 +284,25 @@ impl Element for VirtualParagraphChunkElement {
         drag_selection.as_ref(),
         show_caret,
         caret_width,
+        &external_carets,
         window,
         cx,
       );
     }
   }
+}
+
+fn caret_offset_belongs_to_chunk(layout: &LayoutState, offset: DocumentOffset) -> bool {
+  layout.paragraphs.first().is_some_and(|paragraph| {
+    if !paragraph.contains_byte(offset.byte) {
+      return false;
+    }
+    offset.byte == paragraph.len
+      || offset
+        .byte
+        .checked_add(1)
+        .is_some_and(|next_byte| paragraph.contains_byte(next_byte))
+  })
 }
 
 #[hotpath::measure_all]

@@ -457,6 +457,11 @@ impl Default for RichTextEditorConfig {
   }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ExternalCaret {
+  pub offset: DocumentOffset,
+  pub color_rgb: u32,
+}
 #[derive(Clone)]
 struct ParagraphChunkLayoutCacheEntry {
   key: ParagraphCacheKey,
@@ -892,6 +897,7 @@ pub struct RichTextEditor {
   pub(super) caret_visible: bool,
   caret_blink_active: bool,
   last_text_input_at: Option<Instant>,
+  external_carets: Vec<ExternalCaret>,
   pending_typing_prefetch_resume: bool,
   resume_chunk_prefetch_after_typing: bool,
   paragraph_chunk_layout_cache: Vec<Option<ParagraphChunkLayoutCacheEntry>>,
