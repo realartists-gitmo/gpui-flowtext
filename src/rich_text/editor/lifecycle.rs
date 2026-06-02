@@ -219,6 +219,10 @@ impl RichTextEditor {
       .as_ref()
       .and_then(|edit| crate::encode_canonical_operations(&edit.operations))
   }
+
+  pub fn clear_collaboration_edit(&mut self) {
+    self.last_collaboration_edit = None;
+  }
   pub fn collaboration_role(&self) -> Option<CollaborationRole> {
     self.collaboration_role
   }
@@ -273,7 +277,15 @@ impl RichTextEditor {
         text,
         styles,
       } => {
-        if let Some(paragraph_ix) = self.identity_map.paragraph_index(*paragraph) {
+        if let Some(paragraph_ix) = self.identity_map.paragraph_index(*paragraph)
+          && paragraph_offset_in_bounds(
+            &self.document,
+            DocumentOffset {
+              paragraph: paragraph_ix,
+              byte: *byte,
+            },
+          )
+        {
           insert_text_at(&mut self.document, paragraph_ix, *byte, text, *styles);
         }
       },
@@ -289,19 +301,41 @@ impl RichTextEditor {
         let Some(end_paragraph) = self.identity_map.paragraph_index(*end_paragraph) else {
           return;
         };
-        delete_cross_paragraph_range(
-          &mut self.document,
+        if paragraph_offset_in_bounds(
+          &self.document,
           DocumentOffset {
             paragraph: start_paragraph,
             byte: *start_byte,
-          }..DocumentOffset {
+          },
+        ) && paragraph_offset_in_bounds(
+          &self.document,
+          DocumentOffset {
             paragraph: end_paragraph,
             byte: *end_byte,
           },
-        );
+        ) {
+          delete_cross_paragraph_range(
+            &mut self.document,
+            DocumentOffset {
+              paragraph: start_paragraph,
+              byte: *start_byte,
+            }..DocumentOffset {
+              paragraph: end_paragraph,
+              byte: *end_byte,
+            },
+          );
+        }
       },
       CanonicalOperation::SplitParagraph { paragraph, byte, .. } => {
-        if let Some(paragraph_ix) = self.identity_map.paragraph_index(*paragraph) {
+        if let Some(paragraph_ix) = self.identity_map.paragraph_index(*paragraph)
+          && paragraph_offset_in_bounds(
+            &self.document,
+            DocumentOffset {
+              paragraph: paragraph_ix,
+              byte: *byte,
+            },
+          )
+        {
           split_paragraph_at(&mut self.document, paragraph_ix, *byte);
         }
       },
@@ -334,7 +368,22 @@ impl RichTextEditor {
         }
       },
       CanonicalOperation::SetRunStyles { paragraph, range, styles } => {
-        if let Some(paragraph_ix) = self.identity_map.paragraph_index(*paragraph) {
+        if let Some(paragraph_ix) = self.identity_map.paragraph_index(*paragraph)
+          && paragraph_offset_in_bounds(
+            &self.document,
+            DocumentOffset {
+              paragraph: paragraph_ix,
+              byte: range.start,
+            },
+          )
+          && paragraph_offset_in_bounds(
+            &self.document,
+            DocumentOffset {
+              paragraph: paragraph_ix,
+              byte: range.end,
+            },
+          )
+        {
           mutate_runs_in_range(
             &mut self.document,
             DocumentOffset {
@@ -425,4 +474,11 @@ impl RichTextEditor {
       .cloned()
       .collect()
   }
+}
+
+fn paragraph_offset_in_bounds(document: &Document, offset: DocumentOffset) -> bool {
+  document
+    .paragraphs
+    .get(offset.paragraph)
+    .is_some_and(|paragraph| offset.byte <= paragraph_text_len(paragraph))
 }
