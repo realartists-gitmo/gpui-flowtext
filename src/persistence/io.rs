@@ -10,14 +10,15 @@ use std::{
 };
 
 use crop::Rope;
-use flowstate_collab::{
-  ActorId, CollabDocument, Db8CollabDocument, DocumentId as CollabDocumentId, FormatKind, GranularBinaryRecord, GranularOrderRecord,
-  GranularSource, GranularTextMark, GranularTextRecord, GranularValue, NativeAssetRecord, blake3_hash, granular_record_id_to_u128,
-  granular_record_id_u128,
-};
 use tempfile::NamedTempFile;
 
-use super::{Document, demo_document, rebuild_document_offset_index, reconcile_document_ids, rebuild_document_sections, Block, paragraph_byte_range, ParagraphOffsetIndex, DocumentIds, DocumentTheme, log_timing_lazy, AssetStore, Paragraph, ParagraphStyle, ParagraphId, BlockId, DocumentSection, paragraph_index_for_id, TableBlock, TableCellBlock, TextRun, merge_adjacent_runs, SectionId, ImageBlock, AssetId, ImageSizing, EquationBlock, EquationSyntax, EquationDisplay, TableColumnWidth, TableCell, TableRow, TableStyle, TableCellParagraph, AssetRecord, document_text_slice, paragraph_runs_len, paragraph_text_len, BlockAlignment, SectionKind, RunStyles, RunSemanticStyle, HighlightStyle};
+use super::{
+  AssetId, AssetRecord, AssetStore, Block, BlockAlignment, BlockId, Document, DocumentIds, DocumentSection, DocumentTheme, EquationBlock,
+  EquationDisplay, EquationSyntax, HighlightStyle, ImageBlock, ImageSizing, Paragraph, ParagraphId, ParagraphOffsetIndex, ParagraphStyle,
+  RunSemanticStyle, RunStyles, SectionId, SectionKind, TableBlock, TableCell, TableCellBlock, TableCellParagraph, TableColumnWidth, TableRow,
+  TableStyle, TextRun, demo_document, document_text_slice, log_timing_lazy, merge_adjacent_runs, paragraph_byte_range, paragraph_index_for_id,
+  paragraph_runs_len, paragraph_text_len, rebuild_document_offset_index, rebuild_document_sections, reconcile_document_ids,
+};
 
 // Native binary document format: a magic header, a version, the raw
 // UTF-8 text blob, then per-paragraph run metadata. Keeping the format
@@ -34,13 +35,6 @@ const CHUNK_PARAGRAPH_IDS: u8 = 4;
 const CHUNK_BLOCK_IDS: u8 = 5;
 const CHUNK_SECTIONS: u8 = 6;
 
-const DB8_PARAGRAPH_ORDER: &str = "paragraph_order";
-const DB8_BLOCK_ORDER: &str = "block_order";
-const DB8_MARK_SEMANTIC: &str = "semantic";
-const DB8_MARK_DIRECT_UNDERLINE: &str = "direct_underline";
-const DB8_MARK_STRIKETHROUGH: &str = "strikethrough";
-const DB8_MARK_HIGHLIGHT: &str = "highlight";
-
 const BLOCK_PARAGRAPH: u8 = 0;
 const BLOCK_IMAGE: u8 = 1;
 const BLOCK_EQUATION: u8 = 2;
@@ -49,12 +43,6 @@ const TABLE_CELL_PARAGRAPH: u8 = 0;
 const TABLE_CELL_TABLE: u8 = 1;
 
 pub const DEFAULT_DOCUMENT_EXTENSION: &str = "gptx";
-
-#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
-struct Db8GranularParagraphMetadata {
-  style: ParagraphStyle,
-  runs: Vec<TextRun>,
-}
 
 #[hotpath::measure]
 pub fn load_or_create_document(path: impl AsRef<Path>) -> io::Result<Document> {
@@ -126,54 +114,6 @@ pub fn document_bytes(document: &Document) -> io::Result<Vec<u8>> {
 }
 
 #[hotpath::measure]
-pub fn db8_collab_document(document: &Document, created_by_actor: ActorId) -> io::Result<Db8CollabDocument> {
-  let document = document_for_serialization(document);
-  let document_id = CollabDocumentId(uuid::Uuid::new_v4());
-  db8_collab_document_with_id_from_serialized(&document, document_id, created_by_actor)
-}
-
-#[hotpath::measure]
-pub fn db8_collab_document_with_id(
-  document: &Document,
-  document_id: CollabDocumentId,
-  created_by_actor: ActorId,
-) -> io::Result<Db8CollabDocument> {
-  let document = document_for_serialization(document);
-  db8_collab_document_with_id_from_serialized(&document, document_id, created_by_actor)
-}
-
-fn db8_collab_document_with_id_from_serialized(
-  document: &Document,
-  document_id: CollabDocumentId,
-  created_by_actor: ActorId,
-) -> io::Result<Db8CollabDocument> {
-  validate_document(document)?;
-  let projection_cache = serialize_document(document);
-  let asset_manifest = postcard::to_stdvec(&db8_native_asset_records(document, created_by_actor))
-    .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
-  let source = db8_granular_source(document, projection_cache.clone())?;
-  Db8CollabDocument::from_granular_source(
-    document_id,
-    created_by_actor,
-    &source,
-    &projection_cache,
-    &asset_manifest,
-  )
-  .map_err(collab_to_io_error)
-}
-
-#[hotpath::measure]
-pub fn document_from_db8_collab_source(source: &CollabDocument) -> io::Result<Document> {
-  if source.format_kind() != FormatKind::Db8 {
-    return Err(io::Error::new(io::ErrorKind::InvalidData, "collaboration source is not DB8"));
-  }
-  if let Some(granular) = source.materialize_granular_source().map_err(collab_to_io_error)? {
-    return document_from_db8_granular_source(&granular);
-  }
-  read_document_bytes(&source.materialize_projection_cache().map_err(collab_to_io_error)?)
-}
-
-#[hotpath::measure]
 fn document_for_serialization(document: &Document) -> Document {
   let mut document = document.clone();
   // Recovery/autosave can snapshot while live editing is still settling; make
@@ -187,356 +127,6 @@ fn document_for_serialization(document: &Document) -> Document {
 }
 
 #[hotpath::measure]
-fn db8_granular_source(document: &Document, projection_cache: Vec<u8>) -> io::Result<GranularSource> {
-  let mut paragraph_records = Vec::with_capacity(document.paragraphs.len());
-  for (paragraph_ix, paragraph) in document.paragraphs.iter().enumerate() {
-    let Some(paragraph_id) = document.ids.paragraph_ids.get(paragraph_ix).copied() else {
-      return Err(io::Error::new(io::ErrorKind::InvalidData, "DB8 granular paragraph ID missing"));
-    };
-    let metadata = postcard::to_stdvec(&Db8GranularParagraphMetadata {
-      style: paragraph.style,
-      runs: paragraph.runs.clone(),
-    })
-    .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
-    paragraph_records.push(GranularTextRecord {
-      id: granular_record_id_u128(paragraph_id.0),
-      text: document_text_slice(document, paragraph.byte_range.clone()),
-      metadata,
-      marks: db8_marks_from_runs(&paragraph.runs),
-    });
-  }
-
-  let paragraph_order = document
-    .ids
-    .paragraph_ids
-    .iter()
-    .map(|id| granular_record_id_u128(id.0))
-    .collect::<Vec<_>>();
-  let block_order = document
-    .ids
-    .block_ids
-    .iter()
-    .map(|id| granular_record_id_u128(id.0))
-    .collect::<Vec<_>>();
-  let binaries = document
-    .blocks
-    .iter()
-    .zip(document.ids.block_ids.iter())
-    .map(|(block, id)| {
-      let mut metadata = Vec::new();
-      write_block_record(&mut metadata, block);
-      GranularBinaryRecord {
-        id: granular_record_id_u128(id.0),
-        metadata,
-      }
-    })
-    .collect::<Vec<_>>();
-
-  Ok(GranularSource {
-    metadata: projection_cache,
-    orders: vec![
-      GranularOrderRecord {
-        name: DB8_PARAGRAPH_ORDER.to_string(),
-        ids: paragraph_order,
-      },
-      GranularOrderRecord {
-        name: DB8_BLOCK_ORDER.to_string(),
-        ids: block_order,
-      },
-    ],
-    texts: paragraph_records,
-    binaries,
-  })
-}
-
-#[hotpath::measure]
-fn document_from_db8_granular_source(source: &GranularSource) -> io::Result<Document> {
-  let mut document = read_document_bytes(&source.metadata)?;
-  let paragraph_ids = db8_order_u128(source, DB8_PARAGRAPH_ORDER)?
-    .unwrap_or_else(|| document.ids.paragraph_ids.iter().map(|id| id.0).collect())
-    .into_iter()
-    .map(ParagraphId)
-    .collect::<Vec<_>>();
-  let block_ids = db8_order_u128(source, DB8_BLOCK_ORDER)?
-    .unwrap_or_else(|| document.ids.block_ids.iter().map(|id| id.0).collect())
-    .into_iter()
-    .map(BlockId)
-    .collect::<Vec<_>>();
-  let records = db8_paragraph_records(source)?;
-  let base_paragraphs = document
-    .ids
-    .paragraph_ids
-    .iter()
-    .copied()
-    .zip(document.paragraphs.iter().cloned())
-    .collect::<std::collections::HashMap<_, _>>();
-
-  let mut text = String::new();
-  let mut paragraphs = Vec::with_capacity(paragraph_ids.len());
-  for (paragraph_ix, paragraph_id) in paragraph_ids.iter().copied().enumerate() {
-    if paragraph_ix > 0 {
-      text.push('\n');
-    }
-    let Some(record) = records.get(&paragraph_id) else {
-      return Err(io::Error::new(io::ErrorKind::InvalidData, "DB8 granular paragraph record missing"));
-    };
-    let metadata = postcard::from_bytes::<Db8GranularParagraphMetadata>(&record.metadata)
-      .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
-    let mut paragraph = base_paragraphs.get(&paragraph_id).cloned().unwrap_or(Paragraph {
-      style: metadata.style,
-      byte_range: 0..0,
-      runs: Vec::new(),
-      version: 0,
-    });
-    paragraph.style = metadata.style;
-    paragraph.runs = if paragraph_runs_len_from_runs(&metadata.runs) == record.text.len() {
-      metadata.runs
-    } else {
-      db8_runs_from_marks(record.text.len(), &record.marks)
-    };
-    paragraph.byte_range = text.len()..text.len() + record.text.len();
-    text.push_str(&record.text);
-    paragraphs.push(paragraph);
-  }
-
-  document.text = Rope::from(text);
-  document.paragraphs = Arc::new(paragraphs);
-  document.ids.paragraph_ids = paragraph_ids;
-  document.ids.block_ids = block_ids.clone();
-  rebuild_document_offset_index(&mut document);
-  let block_records = db8_block_records(source)?;
-  document.blocks = Arc::new(db8_materialize_blocks(&document, &block_ids, &block_records)?);
-  rebuild_document_sections(&mut document);
-  validate_document(&document)?;
-  Ok(document)
-}
-
-fn db8_paragraph_records(source: &GranularSource) -> io::Result<std::collections::HashMap<ParagraphId, &GranularTextRecord>> {
-  let mut records = std::collections::HashMap::with_capacity(source.texts.len());
-  for record in &source.texts {
-    let id = granular_record_id_to_u128(&record.id).map(ParagraphId).map_err(collab_to_io_error)?;
-    if records.insert(id, record).is_some() {
-      return Err(io::Error::new(io::ErrorKind::InvalidData, "duplicate DB8 granular paragraph record"));
-    }
-  }
-  Ok(records)
-}
-
-fn db8_block_records(source: &GranularSource) -> io::Result<std::collections::HashMap<BlockId, Block>> {
-  let mut records = std::collections::HashMap::with_capacity(source.binaries.len());
-  for record in &source.binaries {
-    if record.metadata.is_empty() {
-      continue;
-    }
-    let id = granular_record_id_to_u128(&record.id).map(BlockId).map_err(collab_to_io_error)?;
-    let mut cursor = Cursor::new(record.metadata.as_slice());
-    let block = read_block_record(&mut cursor)?;
-    if records.insert(id, block).is_some() {
-      return Err(io::Error::new(io::ErrorKind::InvalidData, "duplicate DB8 granular block record"));
-    }
-  }
-  Ok(records)
-}
-
-fn db8_materialize_blocks(
-  document: &Document,
-  block_ids: &[BlockId],
-  block_records: &std::collections::HashMap<BlockId, Block>,
-) -> io::Result<Vec<Block>> {
-  let mut paragraph_iter = document.paragraphs.iter();
-  let mut blocks = Vec::with_capacity(block_ids.len());
-  for block_id in block_ids {
-    let block = block_records
-      .get(block_id)
-      .cloned()
-      .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "DB8 granular block record missing"))?;
-    match block {
-      Block::Paragraph(_) => {
-        let Some(paragraph) = paragraph_iter.next() else {
-          return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            "DB8 granular paragraph block count exceeds paragraphs",
-          ));
-        };
-        blocks.push(Block::Paragraph(paragraph.clone()));
-      },
-      other => blocks.push(other),
-    }
-  }
-  if paragraph_iter.next().is_some() {
-    return Err(io::Error::new(
-      io::ErrorKind::InvalidData,
-      "DB8 granular paragraph order exceeds paragraph blocks",
-    ));
-  }
-  Ok(blocks)
-}
-
-fn db8_order_u128(source: &GranularSource, name: &str) -> io::Result<Option<Vec<u128>>> {
-  let Some(order) = source.orders.iter().find(|order| order.name == name) else {
-    return Ok(None);
-  };
-  let mut seen = std::collections::HashSet::with_capacity(order.ids.len());
-  let mut ids = Vec::with_capacity(order.ids.len());
-  for id in &order.ids {
-    let parsed = granular_record_id_to_u128(id).map_err(collab_to_io_error)?;
-    if !seen.insert(parsed) {
-      return Err(io::Error::new(io::ErrorKind::InvalidData, "duplicate DB8 granular order ID"));
-    }
-    ids.push(parsed);
-  }
-  Ok(Some(ids))
-}
-
-#[hotpath::measure]
-fn db8_marks_from_runs(runs: &[TextRun]) -> Vec<GranularTextMark> {
-  let mut marks = Vec::new();
-  let mut start = 0;
-  for run in runs {
-    let end = start + run.len;
-    if run.styles.semantic != RunSemanticStyle::Plain {
-      marks.push(GranularTextMark {
-        start_utf8: start,
-        end_utf8: end,
-        key: DB8_MARK_SEMANTIC.to_string(),
-        value: GranularValue::I64(run_semantic_code(run.styles.semantic)),
-      });
-    }
-    if run.styles.direct_underline {
-      marks.push(GranularTextMark {
-        start_utf8: start,
-        end_utf8: end,
-        key: DB8_MARK_DIRECT_UNDERLINE.to_string(),
-        value: GranularValue::Bool(true),
-      });
-    }
-    if run.styles.strikethrough {
-      marks.push(GranularTextMark {
-        start_utf8: start,
-        end_utf8: end,
-        key: DB8_MARK_STRIKETHROUGH.to_string(),
-        value: GranularValue::Bool(true),
-      });
-    }
-    if let Some(highlight) = run.styles.highlight {
-      marks.push(GranularTextMark {
-        start_utf8: start,
-        end_utf8: end,
-        key: DB8_MARK_HIGHLIGHT.to_string(),
-        value: GranularValue::I64(highlight_code(highlight)),
-      });
-    }
-    start = end;
-  }
-  marks
-}
-
-#[hotpath::measure]
-fn db8_runs_from_marks(text_len: usize, marks: &[GranularTextMark]) -> Vec<TextRun> {
-  let mut boundaries = vec![0, text_len];
-  for mark in marks {
-    boundaries.push(mark.start_utf8.min(text_len));
-    boundaries.push(mark.end_utf8.min(text_len));
-  }
-  boundaries.sort_unstable();
-  boundaries.dedup();
-
-  let mut runs = Vec::new();
-  for window in boundaries.windows(2) {
-    let start = window[0];
-    let end = window[1];
-    if start == end {
-      continue;
-    }
-    let mut styles = RunStyles::default();
-    for mark in marks {
-      if mark.start_utf8 <= start && mark.end_utf8 >= end {
-        apply_db8_mark(&mut styles, mark);
-      }
-    }
-    runs.push(TextRun {
-      len: end - start,
-      styles,
-    });
-  }
-  runs = merge_adjacent_runs(runs);
-  if runs.is_empty() && text_len > 0 {
-    runs.push(TextRun {
-      len: text_len,
-      styles: RunStyles::default(),
-    });
-  }
-  runs
-}
-
-fn apply_db8_mark(styles: &mut RunStyles, mark: &GranularTextMark) {
-  match (mark.key.as_str(), &mark.value) {
-    (DB8_MARK_SEMANTIC, GranularValue::I64(value)) => styles.semantic = run_semantic_from_code(*value),
-    (DB8_MARK_DIRECT_UNDERLINE, GranularValue::Bool(value)) => styles.direct_underline = *value,
-    (DB8_MARK_STRIKETHROUGH, GranularValue::Bool(value)) => styles.strikethrough = *value,
-    (DB8_MARK_HIGHLIGHT, GranularValue::I64(value)) => styles.highlight = highlight_from_code(*value),
-    _ => {},
-  }
-}
-
-const fn run_semantic_code(style: RunSemanticStyle) -> i64 {
-  match style {
-    RunSemanticStyle::Plain => 0,
-    RunSemanticStyle::Custom(slot) => 128 + slot as i64,
-  }
-}
-
-const fn run_semantic_from_code(value: i64) -> RunSemanticStyle {
-  if value >= 128 && value <= u8::MAX as i64 + 128 {
-    RunSemanticStyle::Custom((value - 128) as u8)
-  } else {
-    RunSemanticStyle::Plain
-  }
-}
-
-const fn highlight_code(style: HighlightStyle) -> i64 {
-  match style {
-    HighlightStyle::Custom(slot) => 128 + slot as i64,
-  }
-}
-
-const fn highlight_from_code(value: i64) -> Option<HighlightStyle> {
-  if value >= 128 && value <= u8::MAX as i64 + 128 {
-    Some(HighlightStyle::Custom((value - 128) as u8))
-  } else {
-    None
-  }
-}
-
-fn paragraph_runs_len_from_runs(runs: &[TextRun]) -> usize {
-  runs.iter().map(|run| run.len).sum()
-}
-
-#[hotpath::measure]
-fn db8_native_asset_records(document: &Document, created_by_actor: ActorId) -> Vec<NativeAssetRecord> {
-  let mut assets = document
-    .assets
-    .assets
-    .values()
-    .map(|asset| NativeAssetRecord {
-      asset_id: asset.id.0,
-      blake3_hash: blake3_hash(asset.bytes.as_ref().as_slice()),
-      byte_len: asset.bytes.len() as u64,
-      mime_type: asset.mime_type.to_string(),
-      original_name: asset.original_name.as_ref().map(ToString::to_string),
-      created_by_actor,
-      inline: true,
-    })
-    .collect::<Vec<_>>();
-  assets.sort_by_key(|asset| asset.asset_id);
-  assets
-}
-
-#[hotpath::measure]
-fn collab_to_io_error(error: flowstate_collab::CollabError) -> io::Error {
-  io::Error::new(io::ErrorKind::InvalidData, error)
-}
-
 #[hotpath::measure]
 fn serialize_document(document: &Document) -> Vec<u8> {
   let mut chunks = Vec::<(u8, Vec<u8>)>::new();
@@ -664,30 +254,5 @@ fn write_bytes_atomic(path: &Path, bytes: &[u8]) -> io::Result<()> {
       Err(error) => return Err(error),
     }
   }
-  temp_path
-    .persist(path)
-    .map_err(|error| error.error)
-}
-
-#[cfg(test)]
-mod collab_source_tests {
-  use super::*;
-
-  #[test]
-  #[hotpath::measure]
-  fn db8_collab_source_materializes_granular_text_edits() {
-    let document = demo_document();
-    let source = db8_collab_document(&document, ActorId::new()).unwrap();
-    assert!(source.inner().is_granular());
-
-    let text_id = granular_record_id_u128(document.ids.paragraph_ids[0].0);
-    source
-      .inner()
-      .insert_granular_text_utf8(flowstate_collab::Role::Owner, &text_id, 0, "SYNC ")
-      .unwrap();
-
-    let materialized = document_from_db8_collab_source(source.inner()).unwrap();
-    let first_text = document_text_slice(&materialized, paragraph_byte_range(&materialized, 0));
-    assert!(first_text.starts_with("SYNC "));
-  }
+  temp_path.persist(path).map_err(|error| error.error)
 }
