@@ -1,4 +1,3 @@
-
 #[derive(Clone, Copy)]
 struct Db8Chunk {
   kind: u8,
@@ -27,15 +26,28 @@ fn read_document_vnext(mut cursor: Cursor<&[u8]>, timing: Instant) -> io::Result
     .map(std::borrow::ToOwned::to_owned)
     .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "native document text chunk is not UTF-8"))?;
   let assets = read_assets_chunk(required_chunk(cursor.get_ref(), &chunks, CHUNK_ASSETS, "native document assets chunk")?)?;
-  let (blocks, paragraphs) = read_blocks_chunk(required_chunk(cursor.get_ref(), &chunks, CHUNK_BLOCKS, "native document blocks chunk")?, &text)?;
+  let (blocks, paragraphs) = read_blocks_chunk(
+    required_chunk(cursor.get_ref(), &chunks, CHUNK_BLOCKS, "native document blocks chunk")?,
+    &text,
+  )?;
   let paragraph_ids = read_paragraph_ids_chunk(required_chunk(
     cursor.get_ref(),
     &chunks,
     CHUNK_PARAGRAPH_IDS,
     "native document paragraph IDs chunk",
   )?)?;
-  let block_ids = read_block_ids_chunk(required_chunk(cursor.get_ref(), &chunks, CHUNK_BLOCK_IDS, "native document block IDs chunk")?)?;
-  let sections = read_sections_chunk(required_chunk(cursor.get_ref(), &chunks, CHUNK_SECTIONS, "native document sections chunk")?)?;
+  let block_ids = read_block_ids_chunk(required_chunk(
+    cursor.get_ref(),
+    &chunks,
+    CHUNK_BLOCK_IDS,
+    "native document block IDs chunk",
+  )?)?;
+  let sections = read_sections_chunk(required_chunk(
+    cursor.get_ref(),
+    &chunks,
+    CHUNK_SECTIONS,
+    "native document sections chunk",
+  )?)?;
 
   let offset_index = ParagraphOffsetIndex::new(&paragraphs);
   let mut document = Document {
@@ -43,7 +55,11 @@ fn read_document_vnext(mut cursor: Cursor<&[u8]>, timing: Instant) -> io::Result
     paragraphs: Arc::new(paragraphs),
     blocks: Arc::new(blocks),
     assets,
-    ids: DocumentIds { paragraph_ids, block_ids },
+    ids: DocumentIds {
+      document_id: 0,
+      paragraph_ids,
+      block_ids,
+    },
     sections: Arc::new(sections),
     offset_index,
     theme: DocumentTheme::default(),
@@ -64,12 +80,7 @@ fn read_document_vnext(mut cursor: Cursor<&[u8]>, timing: Instant) -> io::Result
 }
 
 #[hotpath::measure]
-fn required_chunk<'bytes>(
-  bytes: &'bytes [u8],
-  chunks: &[Db8Chunk],
-  kind: u8,
-  label: &'static str,
-) -> io::Result<&'bytes [u8]> {
+fn required_chunk<'bytes>(bytes: &'bytes [u8], chunks: &[Db8Chunk], kind: u8, label: &'static str) -> io::Result<&'bytes [u8]> {
   let chunk = chunks
     .iter()
     .find(|chunk| chunk.kind == kind)
@@ -326,7 +337,10 @@ fn char_count_boundaries_to_byte_offsets(runs: &[TextRun], text: &str) -> io::Re
       continue;
     }
     let Some((byte, _)) = text.char_indices().nth(char_count) else {
-      return Err(io::Error::new(io::ErrorKind::InvalidData, "run character offset is outside paragraph text"));
+      return Err(io::Error::new(
+        io::ErrorKind::InvalidData,
+        "run character offset is outside paragraph text",
+      ));
     };
     offsets.push(byte);
   }
@@ -399,7 +413,10 @@ fn read_section_record(cursor: &mut Cursor<&[u8]>) -> io::Result<DocumentSection
   let has_end = read_u8(cursor)? != 0;
   let reserved = read_u8(cursor)?;
   if reserved != 0 {
-    return Err(io::Error::new(io::ErrorKind::InvalidData, "invalid native document section reserved byte"));
+    return Err(io::Error::new(
+      io::ErrorKind::InvalidData,
+      "invalid native document section reserved byte",
+    ));
   }
   let heading = read_u128(cursor)?;
   let start = read_u128(cursor)?;
@@ -688,7 +705,8 @@ pub fn recovery_path_for_document(path: &Path) -> PathBuf {
   let mut recovery_path = path.to_path_buf();
   let file_name = path
     .file_name()
-    .and_then(|name| name.to_str()).map_or_else(|| "untitled.document.recovery".to_owned(), |name| format!("{name}.recovery"));
+    .and_then(|name| name.to_str())
+    .map_or_else(|| "untitled.document.recovery".to_owned(), |name| format!("{name}.recovery"));
   recovery_path.set_file_name(file_name);
   recovery_path
 }
