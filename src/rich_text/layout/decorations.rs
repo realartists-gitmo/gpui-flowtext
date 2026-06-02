@@ -47,36 +47,42 @@ pub(super) fn rects_for_line(document: &Document, line: &LaidOutLine) -> Vec<Run
           (text_bottom - text_top + document.theme.box_padding_top + document.theme.box_padding_bottom).max(px(1.0)),
         ),
       );
-      push_merged_box(&mut borders, box_bounds);
+      push_merged_box(&mut borders, InlineBorderBox { bounds: box_bounds, thickness: segment.format.border_width });
     }
   }
   let border_color = document.theme.default_text_color;
-  let border_thickness = document.theme.inline_border_paint_width;
   // Word paints fills before border rules. Keeping all run borders after all
   // run highlights prevents a following highlighted run from hiding the right
   // edge of the previous boxed run.
   backgrounds.extend(
     borders
       .into_iter()
-      .flat_map(|bounds| box_rules(bounds, border_thickness, border_color)),
+      .flat_map(|border| box_rules(border.bounds, border.thickness, border_color)),
   );
   backgrounds
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct InlineBorderBox {
+  bounds: Bounds<Pixels>,
+  thickness: Pixels,
+}
+
 #[hotpath::measure]
-fn push_merged_box(boxes: &mut Vec<Bounds<Pixels>>, bounds: Bounds<Pixels>) {
+fn push_merged_box(boxes: &mut Vec<InlineBorderBox>, border: InlineBorderBox) {
   const EPSILON: f32 = 0.5;
   if let Some(last) = boxes.last_mut() {
-    let same_band = (f32::from(last.origin.y) - f32::from(bounds.origin.y)).abs() <= EPSILON
-      && (f32::from(last.size.height) - f32::from(bounds.size.height)).abs() <= EPSILON;
-    let touching = f32::from(bounds.origin.x) <= f32::from(last.origin.x + last.size.width) + EPSILON;
-    if same_band && touching {
-      let right = (last.origin.x + last.size.width).max(bounds.origin.x + bounds.size.width);
-      last.size.width = right - last.origin.x;
+    let same_band = (f32::from(last.bounds.origin.y) - f32::from(border.bounds.origin.y)).abs() <= EPSILON
+      && (f32::from(last.bounds.size.height) - f32::from(border.bounds.size.height)).abs() <= EPSILON;
+    let same_thickness = (f32::from(last.thickness) - f32::from(border.thickness)).abs() <= EPSILON;
+    let touching = f32::from(border.bounds.origin.x) <= f32::from(last.bounds.origin.x + last.bounds.size.width) + EPSILON;
+    if same_band && same_thickness && touching {
+      let right = (last.bounds.origin.x + last.bounds.size.width).max(border.bounds.origin.x + border.bounds.size.width);
+      last.bounds.size.width = right - last.bounds.origin.x;
       return;
     }
   }
-  boxes.push(bounds);
+  boxes.push(border);
 }
 
 #[hotpath::measure]
