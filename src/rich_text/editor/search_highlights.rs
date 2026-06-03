@@ -12,7 +12,7 @@ impl RichTextEditor {
     cx.notify();
   }
 
-  pub fn set_active_search_highlight(&mut self, active: Option<usize>, window: &mut Window, cx: &mut Context<Self>) {
+  pub fn set_active_search_highlight(&mut self, active: Option<usize>, cx: &mut Context<Self>) {
     self.active_search_highlight = active.filter(|ix| *ix < self.search_highlights.len());
     if let Some(ix) = self.active_search_highlight {
       let range = self.search_highlights[ix].clone();
@@ -22,7 +22,7 @@ impl RichTextEditor {
       };
       self.goal_x = None;
       self.reset_caret_blink(cx);
-      self.scroll_to_paragraph(range.start.paragraph, window, cx);
+      self.pending_snap_to_paragraph = Some((range.start.paragraph, 3));
     }
     cx.notify();
   }
