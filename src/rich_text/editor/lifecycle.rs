@@ -67,6 +67,8 @@ impl RichTextEditor {
       caret_visible: true,
       caret_blink_active: false,
       external_carets: Vec::new(),
+      search_highlights: Vec::new(),
+      active_search_highlight: None,
       last_text_input_at: None,
       pending_typing_prefetch_resume: false,
       resume_chunk_prefetch_after_typing: false,
@@ -143,6 +145,8 @@ impl RichTextEditor {
     self.recovery_write_in_progress = false;
     self.recovery_write_pending = false;
     self.paste_cache = None;
+    self.search_highlights.clear();
+    self.active_search_highlight = None;
     self.pending_styles = None;
     self.armed_inline_tool = None;
     self.selecting = false;

@@ -898,6 +898,8 @@ pub struct RichTextEditor {
   caret_blink_active: bool,
   last_text_input_at: Option<Instant>,
   external_carets: Vec<ExternalCaret>,
+  pub(super) search_highlights: Vec<Range<DocumentOffset>>,
+  pub(super) active_search_highlight: Option<usize>,
   pending_typing_prefetch_resume: bool,
   resume_chunk_prefetch_after_typing: bool,
   paragraph_chunk_layout_cache: Vec<Option<ParagraphChunkLayoutCacheEntry>>,
@@ -942,6 +944,7 @@ pub struct RichTextEditor {
 include!("lifecycle.rs");
 include!("object_selection.rs");
 include!("style_state.rs");
+include!("search_highlights.rs");
 include!("send_export.rs");
 include!("zoom.rs");
 include!("commands.rs");
