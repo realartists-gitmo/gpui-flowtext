@@ -20,4 +20,23 @@ impl RichTextEditor {
     }
     cx.notify();
   }
+
+  pub fn replace_active_search_highlight(&mut self, replacement: &str, cx: &mut Context<Self>) -> bool {
+    let Some(ix) = self.active_search_highlight else {
+      return false;
+    };
+    let Some(range) = self.search_highlights.get(ix).cloned() else {
+      return false;
+    };
+
+    self.selection = EditorSelection {
+      anchor: range.start,
+      head: range.end,
+    };
+    self.apply_document_edit(cx, |editor, cx| {
+      editor.insert_text(replacement, cx);
+    });
+    self.clear_search_highlights(cx);
+    true
+  }
 }
