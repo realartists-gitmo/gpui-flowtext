@@ -158,23 +158,61 @@ pub fn find_text_ranges(document: &Document, query: &str) -> Vec<Range<DocumentO
 #[hotpath::measure]
 #[must_use]
 pub fn find_text_ranges_with_case(document: &Document, query: &str, case_sensitive: bool) -> Vec<Range<DocumentOffset>> {
+  find_text_ranges_with_options(document, query, case_sensitive, false)
+}
+
+#[hotpath::measure]
+#[must_use]
+pub fn find_text_ranges_with_options(
+  document: &Document,
+  query: &str,
+  case_sensitive: bool,
+  whole_words: bool,
+) -> Vec<Range<DocumentOffset>> {
   if query.is_empty() {
     return Vec::new();
   }
   let text = full_document_text(document);
-  if case_sensitive {
-    return text
+  let matches = if case_sensitive {
+    text
       .match_indices(query)
-      .map(|(start, matched)| global_to_document_offset(document, start)..global_to_document_offset(document, start + matched.len()))
-      .collect();
-  }
+      .map(|(start, matched)| start..start + matched.len())
+      .collect::<Vec<_>>()
+  } else {
+    let lower_text = text.to_ascii_lowercase();
+    let lower_query = query.to_ascii_lowercase();
+    lower_text
+      .match_indices(lower_query.as_str())
+      .map(|(start, matched)| start..start + matched.len())
+      .collect::<Vec<_>>()
+  };
 
-  let lower_text = text.to_ascii_lowercase();
-  let lower_query = query.to_ascii_lowercase();
-  lower_text
-    .match_indices(lower_query.as_str())
-    .map(|(start, matched)| global_to_document_offset(document, start)..global_to_document_offset(document, start + matched.len()))
+  matches
+    .into_iter()
+    .filter(|range| !whole_words || is_whole_word_match(&text, range.clone()))
+    .map(|range| global_to_document_offset(document, range.start)..global_to_document_offset(document, range.end))
     .collect()
+}
+
+#[hotpath::measure]
+fn is_whole_word_match(text: &str, range: Range<usize>) -> bool {
+  !previous_char_is_word_like(text, range.start) && !next_char_is_word_like(text, range.end)
+}
+
+#[hotpath::measure]
+fn previous_char_is_word_like(text: &str, byte: usize) -> bool {
+  text[..byte.min(text.len())]
+    .chars()
+    .next_back()
+    .is_some_and(|ch| ch.is_alphanumeric() || ch == '_')
+}
+
+#[hotpath::measure]
+fn next_char_is_word_like(text: &str, byte: usize) -> bool {
+  text
+    .get(byte.min(text.len())..)
+    .and_then(|suffix| suffix.chars().next())
+    .is_some_and(|ch| ch.is_alphanumeric() || ch == '_')
 }
 
 #[hotpath::measure]
