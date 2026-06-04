@@ -16,12 +16,6 @@ impl RichTextEditor {
     self.active_search_highlight = active.filter(|ix| *ix < self.search_highlights.len());
     if let Some(ix) = self.active_search_highlight {
       let range = self.search_highlights[ix].clone();
-      self.selection = EditorSelection {
-        anchor: range.start,
-        head: range.end,
-      };
-      self.goal_x = None;
-      self.reset_caret_blink(cx);
       self.pending_snap_to_paragraph = Some((range.start.paragraph, 3));
     }
     cx.notify();
