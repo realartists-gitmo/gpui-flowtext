@@ -4,6 +4,10 @@ impl RichTextEditor {
     find_text_ranges(&self.document, query)
   }
 
+  pub fn find_text_with_case(&self, query: &str, case_sensitive: bool) -> Vec<Range<DocumentOffset>> {
+    find_text_ranges_with_case(&self.document, query, case_sensitive)
+  }
+
   pub fn style_state(&self) -> RichTextEditorStyleState {
     if let Some(paragraph) = self.selected_table_cell_paragraph() {
       let mut semantic = SelectionStateBuilder::default();

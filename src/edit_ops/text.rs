@@ -152,12 +152,27 @@ pub fn global_to_document_offset(document: &Document, byte: usize) -> DocumentOf
 #[hotpath::measure]
 #[must_use]
 pub fn find_text_ranges(document: &Document, query: &str) -> Vec<Range<DocumentOffset>> {
+  find_text_ranges_with_case(document, query, true)
+}
+
+#[hotpath::measure]
+#[must_use]
+pub fn find_text_ranges_with_case(document: &Document, query: &str, case_sensitive: bool) -> Vec<Range<DocumentOffset>> {
   if query.is_empty() {
     return Vec::new();
   }
   let text = full_document_text(document);
-  text
-    .match_indices(query)
+  if case_sensitive {
+    return text
+      .match_indices(query)
+      .map(|(start, matched)| global_to_document_offset(document, start)..global_to_document_offset(document, start + matched.len()))
+      .collect();
+  }
+
+  let lower_text = text.to_ascii_lowercase();
+  let lower_query = query.to_ascii_lowercase();
+  lower_text
+    .match_indices(lower_query.as_str())
     .map(|(start, matched)| global_to_document_offset(document, start)..global_to_document_offset(document, start + matched.len()))
     .collect()
 }
