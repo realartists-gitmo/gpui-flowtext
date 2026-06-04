@@ -534,7 +534,7 @@ fn paint_search_highlights(
       origin,
       content_mask,
       visible_range.clone(),
-      if Some(ix) == active { hsla(48.0 / 360.0, 1.0, 0.55, 0.62) } else { hsla(55.0 / 360.0, 1.0, 0.72, 0.45) },
+      if Some(ix) == active { hsla(48.0 / 360.0, 1.0, 0.55, 0.95) } else { hsla(55.0 / 360.0, 1.0, 0.72, 0.86) },
       window,
     );
   }
