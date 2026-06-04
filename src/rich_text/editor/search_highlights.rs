@@ -55,13 +55,39 @@ impl RichTextEditor {
     let count = ranges.len();
     let paragraph_count = self.document.paragraphs.len();
     self.apply_document_edit_with_capture_range(cx, Some(0..paragraph_count), |editor, cx| {
+      let mut final_caret = None;
       for range in ranges {
-        editor.selection = EditorSelection {
-          anchor: range.start,
-          head: range.end,
-        };
-        editor.insert_text(replacement, cx);
+        if range.start.paragraph == range.end.paragraph {
+          let paragraph_ix = range.start.paragraph;
+          let styles = editor
+            .document
+            .paragraphs
+            .get(paragraph_ix)
+            .and_then(|paragraph| {
+              let (run_ix, _) = run_containing(paragraph, range.start.byte);
+              paragraph.runs.get(run_ix).map(|run| run.styles)
+            })
+            .unwrap_or_default();
+          delete_range_in_paragraph(&mut editor.document, paragraph_ix, range.start.byte..range.end.byte);
+          insert_text_at(&mut editor.document, paragraph_ix, range.start.byte, replacement, styles);
+          let caret = DocumentOffset {
+            paragraph: paragraph_ix,
+            byte: range.start.byte + replacement.len(),
+          };
+          final_caret = Some(caret);
+        } else {
+          editor.selection = EditorSelection {
+            anchor: range.start,
+            head: range.end,
+          };
+          editor.insert_text(replacement, cx);
+          final_caret = Some(editor.selection.head);
+        }
       }
+      if let Some(caret) = final_caret {
+        editor.selection = EditorSelection { anchor: caret, head: caret };
+      }
+      editor.after_text_mutation(cx);
     });
     self.search_highlights.clear();
     self.active_search_highlight = None;
