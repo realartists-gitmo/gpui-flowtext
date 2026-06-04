@@ -39,4 +39,29 @@ impl RichTextEditor {
     self.clear_search_highlights(cx);
     true
   }
+
+  pub fn replace_all_search_highlights(&mut self, replacement: &str, cx: &mut Context<Self>) -> usize {
+    let ranges = std::mem::take(&mut self.search_highlights);
+    let count = ranges.len();
+    if ranges.is_empty() {
+      self.active_search_highlight = None;
+      cx.notify();
+      return 0;
+    }
+
+    let paragraph_count = self.document.paragraphs.len();
+    self.apply_document_edit_with_capture_range(cx, Some(0..paragraph_count), |editor, cx| {
+      for range in ranges.into_iter().rev() {
+        editor.selection = EditorSelection {
+          anchor: range.start,
+          head: range.end,
+        };
+        editor.insert_text(replacement, cx);
+      }
+    });
+    self.search_highlights.clear();
+    self.active_search_highlight = None;
+    cx.notify();
+    count
+  }
 }
