@@ -73,24 +73,27 @@ impl RichTextEditor {
     self.set_highlight_internal(highlight, cx);
   }
 
-  pub fn speech_send_text_at_selection_or_hover(&mut self, section_slots: &[u8], window: &mut Window, cx: &mut Context<Self>) -> Option<String> {
+  pub fn speech_send_fragment_at_selection_or_hover(
+    &mut self,
+    section_slots: &[u8],
+    window: &mut Window,
+    cx: &mut Context<Self>,
+  ) -> Option<RichClipboardFragment> {
     if !self.selection.is_caret() {
-      let range = self.selection.normalized();
-      return Some(document_text_slice(
-        &self.document,
-        paragraph_byte_range(&self.document, range.start.paragraph).start + range.start.byte
-          ..paragraph_byte_range(&self.document, range.end.paragraph).start + range.end.byte,
-      ));
+      return Some(selected_rich_fragment(&self.document, self.selection.normalized()));
     }
     let position = self.last_drag_position?;
     let paragraph_ix = self.hit_test_document_position(position, window, cx).paragraph;
     let (start_paragraph, end_paragraph_exclusive) = enclosing_section_bounds(&self.document, paragraph_ix, section_slots)
       .unwrap_or((paragraph_ix, paragraph_ix.saturating_add(1).min(self.document.paragraphs.len())));
     let end_paragraph = end_paragraph_exclusive.saturating_sub(1);
-    Some(document_text_slice(
+    Some(selected_rich_fragment(
       &self.document,
-      paragraph_byte_range(&self.document, start_paragraph).start
-        ..paragraph_byte_range(&self.document, end_paragraph).start + paragraph_text_len(&self.document.paragraphs[end_paragraph]),
+      DocumentOffset { paragraph: start_paragraph, byte: 0 }
+        ..DocumentOffset {
+          paragraph: end_paragraph,
+          byte: paragraph_text_len(&self.document.paragraphs[end_paragraph]),
+        },
     ))
   }
 
