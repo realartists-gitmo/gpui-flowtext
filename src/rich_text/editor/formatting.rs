@@ -153,13 +153,11 @@ impl RichTextEditor {
           paragraph_text_len(&editor.document.paragraphs[paragraph_ix])
         };
         if paragraph_start < paragraph_end {
-          apply_style_to_paragraph_range(
+          apply_highlight_to_existing_highlights_in_paragraph_range(
             &mut editor.document,
             paragraph_ix,
             paragraph_start..paragraph_end,
-            RunStyle::Highlight(match highlight {
-              HighlightStyle::Custom(slot) => slot,
-            }),
+            highlight,
           );
         }
       }
@@ -272,6 +270,23 @@ impl RichTextEditor {
   // The signatures all match what `cx.listener(...)` expects:
   //   fn(&mut Self, &Action, &mut Window, &mut Context<Self>).
 
+}
+
+fn apply_highlight_to_existing_highlights_in_paragraph_range(
+  document: &mut Document,
+  paragraph_ix: usize,
+  range: Range<usize>,
+  highlight: HighlightStyle,
+) {
+  mutate_runs_in_range(
+    document,
+    DocumentOffset { paragraph: paragraph_ix, byte: range.start }..DocumentOffset { paragraph: paragraph_ix, byte: range.end },
+    |styles| {
+      if styles.highlight.is_some() {
+        styles.highlight = Some(highlight);
+      }
+    },
+  );
 }
 
 fn enclosing_section<'a>(document: &'a Document, paragraph_ix: usize, section_slots: &[u8]) -> Option<&'a DocumentSection> {
