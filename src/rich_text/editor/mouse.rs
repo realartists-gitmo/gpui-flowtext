@@ -9,6 +9,10 @@ impl RichTextEditor {
     self.last_drag_position = Some(event.position);
     self.goal_x = None;
     let offset = self.hit_test_document_position(event.position, window, cx);
+    if self.collapse_gutter_hit(event.position, offset.paragraph) {
+      self.toggle_section_collapsed_at_paragraph(offset.paragraph, &[0, 1, 2, 3], cx);
+      return;
+    }
     self.drag_anchor = None;
     self.smart_selection_left_anchor_word = false;
     self.smart_selection_exact_override = false;
@@ -46,6 +50,17 @@ impl RichTextEditor {
     self.drag_anchor = Some(self.selection.anchor);
     self.reset_caret_blink(cx);
     cx.notify();
+  }
+
+  fn collapse_gutter_hit(&self, position: Point<Pixels>, paragraph_ix: usize) -> bool {
+    let Some(paragraph) = self.document.paragraphs.get(paragraph_ix) else {
+      return false;
+    };
+    if !matches!(paragraph.style, ParagraphStyle::Custom(0 | 1 | 2 | 3)) {
+      return false;
+    }
+    let viewport = self.scroll_handle.bounds();
+    position.x >= viewport.left() && position.x <= viewport.left() + px(24.0)
   }
 
   fn on_mouse_move(&mut self, event: &MouseMoveEvent, window: &mut Window, cx: &mut Context<Self>) {

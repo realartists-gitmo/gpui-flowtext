@@ -75,7 +75,17 @@ impl RichTextEditor {
 
   pub fn toggle_enclosing_section_collapsed(&mut self, section_slots: &[u8], cx: &mut Context<Self>) {
     let caret = self.selection.head;
-    let Some(section) = enclosing_section(&self.document, caret.paragraph, section_slots) else {
+    self.toggle_section_collapsed_at_paragraph(caret.paragraph, section_slots, cx);
+  }
+
+  pub(super) fn section_collapse_state_at_paragraph(&self, paragraph_ix: usize, section_slots: &[u8]) -> Option<bool> {
+    let section = enclosing_section(&self.document, paragraph_ix, section_slots)?;
+    let start = paragraph_index_for_id(&self.document, section.start_paragraph)?;
+    (start == paragraph_ix).then(|| self.collapsed_section_ids.contains(&section.id))
+  }
+
+  pub(super) fn toggle_section_collapsed_at_paragraph(&mut self, paragraph_ix: usize, section_slots: &[u8], cx: &mut Context<Self>) {
+    let Some(section) = enclosing_section(&self.document, paragraph_ix, section_slots) else {
       return;
     };
     if !self.collapsed_section_ids.insert(section.id) {

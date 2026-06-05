@@ -1,8 +1,8 @@
 use std::{cell::RefCell, rc::Rc};
 
 use gpui::{
-  App, AvailableSpace, Bounds, Element, ElementId, Entity, GlobalElementId, InspectorElementId, IntoElement, LayoutId, Pixels, Style, Window,
-  px, relative,
+  App, AvailableSpace, Background, Bounds, Element, ElementId, Entity, GlobalElementId, InspectorElementId, IntoElement, LayoutId, Pixels,
+  Style, Window, fill, px, relative,
 };
 
 use super::*;
@@ -259,6 +259,19 @@ impl Element for VirtualParagraphChunkElement {
       )
     };
     if let Some((layout, bounds)) = self.layout.positioned() {
+      if self.chunk_ix == 0 {
+        let collapse_state = self
+          .editor
+          .read(cx)
+          .section_collapse_state_at_paragraph(self.paragraph_ix, &[0, 1, 2, 3]);
+        if let Some(collapsed) = collapse_state {
+          let indicator = Bounds::new(
+            gpui::point(bounds.left() + px(6.0), bounds.top() + px(6.0)),
+            gpui::size(px(7.0), if collapsed { px(7.0) } else { px(3.0) }),
+          );
+          window.paint_quad(fill(indicator, Background::from(gpui::black().opacity(0.55))));
+        }
+      }
       let show_caret = caret_offset.is_some_and(|offset| {
         layout.paragraphs.first().is_some_and(|paragraph| {
           if !paragraph.contains_byte(offset.byte) {
