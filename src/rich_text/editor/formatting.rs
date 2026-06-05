@@ -103,6 +103,11 @@ impl RichTextEditor {
   }
 
   pub(super) fn section_collapse_state_at_paragraph(&self, paragraph_ix: usize, section_slots: &[u8]) -> Option<bool> {
+    (self.hovered_collapse_paragraph == Some(paragraph_ix))
+      .then(|| self.section_collapsed_at_heading(paragraph_ix, section_slots))?
+  }
+
+  pub(super) fn section_collapsed_at_heading(&self, paragraph_ix: usize, section_slots: &[u8]) -> Option<bool> {
     let section = enclosing_section(&self.document, paragraph_ix, section_slots)?;
     let start = paragraph_index_for_id(&self.document, section.start_paragraph)?;
     (start == paragraph_ix).then(|| self.collapsed_section_ids.contains(&section.id))

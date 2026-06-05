@@ -934,6 +934,7 @@ pub struct RichTextEditor {
   prep_cache_retain_ranges: ParagraphCacheRetainRanges,
   invisibility_mode: bool,
   collapsed_section_ids: FxHashSet<SectionId>,
+  hovered_collapse_paragraph: Option<usize>,
   // Remembered horizontal pixel position for vertical caret motion. When the
   // user presses Up/Down repeatedly we want the caret to track a consistent
   // x even on lines whose contents are shorter than the previous one. The

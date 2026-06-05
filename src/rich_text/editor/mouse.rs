@@ -65,6 +65,17 @@ impl RichTextEditor {
 
   fn on_mouse_move(&mut self, event: &MouseMoveEvent, window: &mut Window, cx: &mut Context<Self>) {
     self.last_drag_position = Some(event.position);
+    if !event.dragging() {
+      let paragraph_ix = self.hit_test_document_position(event.position, window, cx).paragraph;
+      let next_hover = self
+        .section_collapsed_at_heading(paragraph_ix, &[0, 1, 2, 3])
+        .is_some()
+        .then_some(paragraph_ix);
+      if self.hovered_collapse_paragraph != next_hover {
+        self.hovered_collapse_paragraph = next_hover;
+        cx.notify();
+      }
+    }
     if self.update_table_column_resize_drag(event.position, cx) {
       return;
     }
