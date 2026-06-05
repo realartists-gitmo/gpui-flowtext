@@ -59,8 +59,22 @@ impl RichTextEditor {
     if !matches!(paragraph.style, ParagraphStyle::Custom(0 | 1 | 2 | 3)) {
       return false;
     }
+    let Some(layout) = self.layout_for_offset(DocumentOffset {
+      paragraph: paragraph_ix,
+      byte: paragraph_text_len(paragraph),
+    }) else {
+      return false;
+    };
     let viewport = self.scroll_handle.bounds();
-    position.x >= viewport.left() && position.x <= viewport.left() + px(24.0)
+    let row_top = self.item_top_for_paragraph_chunk(paragraph_ix, 0).unwrap_or(px(0.0));
+    let bounds = Bounds::new(
+      point(viewport.left(), viewport.top() + self.scroll_handle.offset().y + row_top),
+      size(viewport.size.width.max(px(1.0)), layout.size.height),
+    );
+    let Some(caret) = caret_bounds(&layout, DocumentOffset { paragraph: paragraph_ix, byte: paragraph_text_len(paragraph) }, bounds.origin) else {
+      return false;
+    };
+    position.x >= caret.right() && position.x <= caret.right() + px(18.0) && position.y >= caret.top() - px(6.0) && position.y <= caret.bottom() + px(10.0)
   }
 
   fn on_mouse_move(&mut self, event: &MouseMoveEvent, window: &mut Window, cx: &mut Context<Self>) {

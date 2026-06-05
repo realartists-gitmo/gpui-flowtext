@@ -84,7 +84,8 @@ impl RichTextEditor {
     }
     let position = self.last_drag_position?;
     let paragraph_ix = self.hit_test_document_position(position, window, cx).paragraph;
-    let (start_paragraph, end_paragraph_exclusive) = enclosing_section_bounds(&self.document, paragraph_ix, section_slots)
+    let (start_paragraph, end_paragraph_exclusive) = hierarchical_section_bounds(&self.document, paragraph_ix, section_slots)
+      .or_else(|| enclosing_section_bounds(&self.document, paragraph_ix, section_slots))
       .unwrap_or((paragraph_ix, paragraph_ix.saturating_add(1).min(self.document.paragraphs.len())));
     let end_paragraph = end_paragraph_exclusive.saturating_sub(1);
     Some(selected_rich_fragment(
@@ -292,6 +293,38 @@ fn apply_highlight_to_existing_highlights_in_paragraph_range(
       }
     },
   );
+}
+
+fn hierarchical_section_bounds(document: &Document, paragraph_ix: usize, section_slots: &[u8]) -> Option<(usize, usize)> {
+  let paragraph = document.paragraphs.get(paragraph_ix)?;
+  let ParagraphStyle::Custom(slot) = paragraph.style else {
+    return None;
+  };
+  if !section_slots.contains(&(slot & 0x7f)) {
+    return None;
+  }
+  let level = document
+    .theme
+    .custom_paragraph_styles
+    .get(&(slot & 0x7f))
+    .and_then(|style| style.section_level)?;
+  let mut end = document.paragraphs.len();
+  for next_ix in paragraph_ix.saturating_add(1)..document.paragraphs.len() {
+    let ParagraphStyle::Custom(next_slot) = document.paragraphs[next_ix].style else {
+      continue;
+    };
+    if document
+      .theme
+      .custom_paragraph_styles
+      .get(&(next_slot & 0x7f))
+      .and_then(|style| style.section_level)
+      .is_some_and(|next_level| next_level <= level)
+    {
+      end = next_ix;
+      break;
+    }
+  }
+  Some((paragraph_ix, end))
 }
 
 fn enclosing_section<'a>(document: &'a Document, paragraph_ix: usize, section_slots: &[u8]) -> Option<&'a DocumentSection> {
