@@ -74,7 +74,10 @@ impl RichTextEditor {
     let Some(caret) = caret_bounds(&layout, DocumentOffset { paragraph: paragraph_ix, byte: paragraph_text_len(paragraph) }, bounds.origin) else {
       return false;
     };
-    position.x >= caret.right() && position.x <= caret.right() + px(18.0) && position.y >= caret.top() - px(6.0) && position.y <= caret.bottom() + px(10.0)
+    position.x >= caret.right() + px(2.0)
+      && position.x <= caret.right() + px(26.0)
+      && position.y >= caret.top() - px(10.0)
+      && position.y <= caret.bottom() + px(12.0)
   }
 
   fn on_mouse_move(&mut self, event: &MouseMoveEvent, window: &mut Window, cx: &mut Context<Self>) {

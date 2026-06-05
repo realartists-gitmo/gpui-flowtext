@@ -264,15 +264,23 @@ impl Element for VirtualParagraphChunkElement {
           .editor
           .read(cx)
           .section_collapse_state_at_paragraph(self.paragraph_ix, &[0, 1, 2, 3]);
-        if let Some(collapsed) = collapse_state {
+        if let Some(_collapsed) = collapse_state {
+          let indicator_size = px(12.0);
           let (indicator_x, indicator_y) = layout
             .paragraphs
             .first()
-            .and_then(|paragraph| paragraph.lines.last().map(|line| (line.origin.x + line.width + px(6.0), paragraph.top + line.origin.y + px(4.0))))
+            .and_then(|paragraph| {
+              paragraph.lines.last().map(|line| {
+                (
+                  line.origin.x + line.width + px(6.0),
+                  paragraph.top + line.origin.y + ((line.line_height - indicator_size) / 2.0).max(px(0.0)),
+                )
+              })
+            })
             .unwrap_or((px(6.0), px(6.0)));
           let indicator = Bounds::new(
             gpui::point(bounds.left() + indicator_x, bounds.top() + indicator_y),
-            gpui::size(px(7.0), if collapsed { px(7.0) } else { px(3.0) }),
+            gpui::size(indicator_size, indicator_size),
           );
           window.paint_quad(fill(indicator, Background::from(gpui::black().opacity(0.55))));
         }
