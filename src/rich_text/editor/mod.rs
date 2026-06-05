@@ -19,7 +19,7 @@ use gpui::{
 use gpui_component::ActiveTheme as _;
 use gpui_component::scroll::{Scrollbar, ScrollbarHandle, ScrollbarShow};
 use gpui_component::{VirtualListScrollHandle, v_virtual_list};
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use unicode_segmentation::UnicodeSegmentation;
 
 use super::*;
@@ -933,6 +933,7 @@ pub struct RichTextEditor {
   layout_cache_retain_ranges: ParagraphCacheRetainRanges,
   prep_cache_retain_ranges: ParagraphCacheRetainRanges,
   invisibility_mode: bool,
+  collapsed_section_ids: FxHashSet<SectionId>,
   // Remembered horizontal pixel position for vertical caret motion. When the
   // user presses Up/Down repeatedly we want the caret to track a consistent
   // x even on lines whose contents are shorter than the previous one. The

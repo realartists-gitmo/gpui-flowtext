@@ -73,6 +73,20 @@ impl RichTextEditor {
     self.set_highlight_internal(highlight, cx);
   }
 
+  pub fn toggle_enclosing_section_collapsed(&mut self, section_slots: &[u8], cx: &mut Context<Self>) {
+    let caret = self.selection.head;
+    let Some(section) = enclosing_section(&self.document, caret.paragraph, section_slots) else {
+      return;
+    };
+    if !self.collapsed_section_ids.insert(section.id) {
+      self.collapsed_section_ids.remove(&section.id);
+    }
+    self.item_sizes_cache = None;
+    self.height_prefix_index = HeightPrefixIndex::default();
+    self.pending_item_sizes_patch_range = None;
+    cx.notify();
+  }
+
   pub fn set_highlight_from_caret_to_enclosing_section_end(&mut self, highlight: HighlightStyle, section_slots: &[u8], cx: &mut Context<Self>) {
     let caret = self.selection.head;
     let Some((start_paragraph, end_paragraph_exclusive)) = enclosing_section_bounds(&self.document, caret.paragraph, section_slots) else {
@@ -226,21 +240,40 @@ impl RichTextEditor {
 
 }
 
-fn enclosing_section_bounds(document: &Document, paragraph_ix: usize, section_slots: &[u8]) -> Option<(usize, usize)> {
+fn enclosing_section<'a>(document: &'a Document, paragraph_ix: usize, section_slots: &[u8]) -> Option<&'a DocumentSection> {
   document
     .sections
     .iter()
-    .filter_map(|section| {
+    .filter(|section| {
       let SectionKind::Custom(slot) = section.kind;
       if !section_slots.contains(&slot) {
-        return None;
+        return false;
       }
-      let start = paragraph_index_for_id(document, section.start_paragraph)?;
+      let Some(start) = paragraph_index_for_id(document, section.start_paragraph) else {
+        return false;
+      };
       let end = section
         .end_paragraph_exclusive
         .and_then(|id| paragraph_index_for_id(document, id))
         .unwrap_or(document.paragraphs.len());
-      (start <= paragraph_ix && paragraph_ix < end).then_some((start, end))
+      start <= paragraph_ix && paragraph_ix < end
     })
-    .min_by_key(|(start, end)| end - start)
+    .min_by_key(|section| {
+      let start = paragraph_index_for_id(document, section.start_paragraph).unwrap_or(0);
+      let end = section
+        .end_paragraph_exclusive
+        .and_then(|id| paragraph_index_for_id(document, id))
+        .unwrap_or(document.paragraphs.len());
+      end - start
+    })
+}
+
+fn enclosing_section_bounds(document: &Document, paragraph_ix: usize, section_slots: &[u8]) -> Option<(usize, usize)> {
+  let section = enclosing_section(document, paragraph_ix, section_slots)?;
+  let start = paragraph_index_for_id(document, section.start_paragraph)?;
+  let end = section
+    .end_paragraph_exclusive
+    .and_then(|id| paragraph_index_for_id(document, id))
+    .unwrap_or(document.paragraphs.len());
+  Some((start, end))
 }

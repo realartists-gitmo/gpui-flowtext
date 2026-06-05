@@ -103,6 +103,7 @@ impl RichTextEditor {
       layout_cache_retain_ranges: ParagraphCacheRetainRanges::default(),
       prep_cache_retain_ranges: ParagraphCacheRetainRanges::default(),
       invisibility_mode: false,
+      collapsed_section_ids: FxHashSet::default(),
       goal_x: None,
     }
   }
@@ -132,6 +133,7 @@ impl RichTextEditor {
     self.last_send_document_generation = None;
     self.last_format_export_generation = None;
     self.zoom_percent = 100.0;
+    self.collapsed_section_ids.clear();
     self.document.theme.zoom_factor = 1.0;
     self.save_status = SaveStatus::Saved;
     self.last_recovery_generation = 0;
