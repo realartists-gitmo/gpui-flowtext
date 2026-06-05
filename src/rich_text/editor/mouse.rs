@@ -64,6 +64,7 @@ impl RichTextEditor {
   }
 
   fn on_mouse_move(&mut self, event: &MouseMoveEvent, window: &mut Window, cx: &mut Context<Self>) {
+    self.last_drag_position = Some(event.position);
     if self.update_table_column_resize_drag(event.position, cx) {
       return;
     }
