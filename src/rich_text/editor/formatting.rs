@@ -73,6 +73,35 @@ impl RichTextEditor {
     self.set_highlight_internal(highlight, cx);
   }
 
+  pub fn set_highlight_for_document_offsets(&mut self, start: DocumentOffset, end: DocumentOffset, highlight: HighlightStyle, cx: &mut Context<Self>) {
+    let range_start = start.min(end);
+    let range_end = start.max(end);
+    if range_start == range_end || range_start.paragraph >= self.document.paragraphs.len() || range_end.paragraph >= self.document.paragraphs.len() {
+      return;
+    }
+    self.apply_document_edit(cx, |editor, cx| {
+      for paragraph_ix in range_start.paragraph..=range_end.paragraph {
+        let paragraph_start = if paragraph_ix == range_start.paragraph { range_start.byte } else { 0 };
+        let paragraph_end = if paragraph_ix == range_end.paragraph {
+          range_end.byte
+        } else {
+          paragraph_text_len(&editor.document.paragraphs[paragraph_ix])
+        };
+        if paragraph_start < paragraph_end {
+          apply_style_to_paragraph_range(
+            &mut editor.document,
+            paragraph_ix,
+            paragraph_start..paragraph_end,
+            RunStyle::Highlight(match highlight {
+              HighlightStyle::Custom(slot) => slot,
+            }),
+          );
+        }
+      }
+      editor.after_formatting_mutation(cx);
+    });
+  }
+
   pub fn clear_highlight(&mut self, cx: &mut Context<Self>) {
     self.set_highlight_internal(None, cx);
   }
