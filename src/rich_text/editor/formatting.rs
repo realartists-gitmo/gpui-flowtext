@@ -73,6 +73,23 @@ impl RichTextEditor {
     self.set_highlight_internal(highlight, cx);
   }
 
+  pub fn set_highlight_from_caret_to_enclosing_section_end(&mut self, highlight: HighlightStyle, section_slots: &[u8], cx: &mut Context<Self>) {
+    let caret = self.selection.head;
+    let Some((start_paragraph, end_paragraph_exclusive)) = enclosing_section_bounds(&self.document, caret.paragraph, section_slots) else {
+      return;
+    };
+    let start = DocumentOffset {
+      paragraph: caret.paragraph.max(start_paragraph),
+      byte: caret.byte,
+    };
+    let end_paragraph = end_paragraph_exclusive.saturating_sub(1);
+    let end = DocumentOffset {
+      paragraph: end_paragraph,
+      byte: paragraph_text_len(&self.document.paragraphs[end_paragraph]),
+    };
+    self.set_highlight_for_document_offsets(start, end, highlight, cx);
+  }
+
   pub fn set_highlight_for_document_offsets(&mut self, start: DocumentOffset, end: DocumentOffset, highlight: HighlightStyle, cx: &mut Context<Self>) {
     let range_start = start.min(end);
     let range_end = start.max(end);
@@ -207,4 +224,23 @@ impl RichTextEditor {
   // The signatures all match what `cx.listener(...)` expects:
   //   fn(&mut Self, &Action, &mut Window, &mut Context<Self>).
 
+}
+
+fn enclosing_section_bounds(document: &Document, paragraph_ix: usize, section_slots: &[u8]) -> Option<(usize, usize)> {
+  document
+    .sections
+    .iter()
+    .filter_map(|section| {
+      let SectionKind::Custom(slot) = section.kind;
+      if !section_slots.contains(&slot) {
+        return None;
+      }
+      let start = paragraph_index_for_id(document, section.start_paragraph)?;
+      let end = section
+        .end_paragraph_exclusive
+        .and_then(|id| paragraph_index_for_id(document, id))
+        .unwrap_or(document.paragraphs.len());
+      (start <= paragraph_ix && paragraph_ix < end).then_some((start, end))
+    })
+    .min_by_key(|(start, end)| end - start)
 }
