@@ -40,24 +40,58 @@ impl RichTextEditor {
     };
     self.selection = EditorSelection { anchor: after, head: after };
 
-    self.undo_stack.push(EditRecord {
-      before_selection,
-      before_generation,
-      after_selection: self.selection.clone(),
-      after_generation,
-      operations: vec![EditOperation::InsertText {
-        paragraph: caret.paragraph,
-        byte: caret.byte,
-        text: text.to_string(),
-        styles,
-      }],
-      canonical_operations: vec![CanonicalOperation::InsertText {
-        paragraph: paragraph_id,
-        byte: caret.byte,
-        text: text.to_string(),
-        styles,
-      }],
-    });
+    let mut merged_into_previous = false;
+    if let Some(record) = self.undo_stack.last_mut()
+      && before_selection.anchor == before_selection.head
+      && record.after_selection == before_selection
+      && record.operations.len() == 1
+      && record.canonical_operations.len() == 1
+      && let EditOperation::InsertText {
+        paragraph,
+        byte,
+        text: previous_text,
+        styles: previous_styles,
+      } = &mut record.operations[0]
+      && *paragraph == caret.paragraph
+      && *previous_styles == styles
+      && *byte + previous_text.len() == caret.byte
+      && let CanonicalOperation::InsertText {
+        paragraph: canonical_paragraph,
+        byte: canonical_byte,
+        text: canonical_text,
+        styles: canonical_styles,
+      } = &mut record.canonical_operations[0]
+      && *canonical_paragraph == paragraph_id
+      && *canonical_styles == styles
+      && *canonical_byte + canonical_text.len() == caret.byte
+    {
+      previous_text.push_str(text);
+      canonical_text.push_str(text);
+      record.after_selection = self.selection.clone();
+      record.after_generation = after_generation;
+      merged_into_previous = true;
+    }
+
+    if !merged_into_previous {
+      self.undo_stack.push(EditRecord {
+        before_selection,
+        before_generation,
+        after_selection: self.selection.clone(),
+        after_generation,
+        operations: vec![EditOperation::InsertText {
+          paragraph: caret.paragraph,
+          byte: caret.byte,
+          text: text.to_string(),
+          styles,
+        }],
+        canonical_operations: vec![CanonicalOperation::InsertText {
+          paragraph: paragraph_id,
+          byte: caret.byte,
+          text: text.to_string(),
+          styles,
+        }],
+      });
+    }
     self.redo_stack.clear();
     self.layout_invalidation_hint = Some(caret.paragraph..caret.paragraph + 1);
     self.suppress_mutation_notify += 1;
