@@ -65,13 +65,14 @@ impl RichTextEditor {
     }) else {
       return false;
     };
-    let viewport = self.scroll_handle.bounds();
-    let row_top = self.item_top_for_paragraph_chunk(paragraph_ix, 0).unwrap_or(px(0.0));
-    let bounds = Bounds::new(
-      point(viewport.left(), viewport.top() + self.scroll_handle.offset().y + row_top),
-      size(viewport.size.width.max(px(1.0)), layout.size.height),
-    );
-    let Some(caret) = caret_bounds(&layout, DocumentOffset { paragraph: paragraph_ix, byte: paragraph_text_len(paragraph) }, bounds.origin) else {
+    let Some(caret) = caret_bounds(
+      &layout,
+      DocumentOffset {
+        paragraph: paragraph_ix,
+        byte: paragraph_text_len(paragraph),
+      },
+      point(px(0.0), px(0.0)),
+    ) else {
       return false;
     };
     position.x >= caret.right() + px(2.0)
