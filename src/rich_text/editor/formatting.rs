@@ -109,17 +109,36 @@ impl RichTextEditor {
   }
 
   pub(super) fn section_collapsed_at_heading(&self, paragraph_ix: usize, section_slots: &[u8]) -> Option<bool> {
-    let section = enclosing_section(&self.document, paragraph_ix, section_slots)?;
-    let start = paragraph_index_for_id(&self.document, section.start_paragraph)?;
-    (start == paragraph_ix).then(|| self.collapsed_section_ids.contains(&section.id))
+    if let Some(section) = enclosing_section(&self.document, paragraph_ix, section_slots) {
+      let start = paragraph_index_for_id(&self.document, section.start_paragraph)?;
+      return (start == paragraph_ix).then(|| self.collapsed_section_ids.contains(&section.id));
+    }
+    let paragraph = self.document.paragraphs.get(paragraph_ix)?;
+    let ParagraphStyle::Custom(slot) = paragraph.style else {
+      return None;
+    };
+    section_slots
+      .contains(&(slot & 0x7f))
+      .then(|| self.collapsed_section_ids.contains(&SectionId(paragraph_ix as u128)))
   }
 
   pub(super) fn toggle_section_collapsed_at_paragraph(&mut self, paragraph_ix: usize, section_slots: &[u8], cx: &mut Context<Self>) {
-    let Some(section) = enclosing_section(&self.document, paragraph_ix, section_slots) else {
-      return;
+    let section_id = if let Some(section) = enclosing_section(&self.document, paragraph_ix, section_slots) {
+      section.id
+    } else {
+      let Some(paragraph) = self.document.paragraphs.get(paragraph_ix) else {
+        return;
+      };
+      let ParagraphStyle::Custom(slot) = paragraph.style else {
+        return;
+      };
+      if !section_slots.contains(&(slot & 0x7f)) {
+        return;
+      }
+      SectionId(paragraph_ix as u128)
     };
-    if !self.collapsed_section_ids.insert(section.id) {
-      self.collapsed_section_ids.remove(&section.id);
+    if !self.collapsed_section_ids.insert(section_id) {
+      self.collapsed_section_ids.remove(&section_id);
     }
     self.item_sizes_cache = None;
     self.height_prefix_index = HeightPrefixIndex::default();
@@ -129,7 +148,9 @@ impl RichTextEditor {
 
   pub fn set_highlight_from_caret_to_enclosing_section_end(&mut self, highlight: HighlightStyle, section_slots: &[u8], cx: &mut Context<Self>) {
     let caret = self.selection.head;
-    let Some((start_paragraph, end_paragraph_exclusive)) = enclosing_section_bounds(&self.document, caret.paragraph, section_slots) else {
+    let Some((start_paragraph, end_paragraph_exclusive)) = hierarchical_section_bounds(&self.document, caret.paragraph, section_slots)
+      .or_else(|| enclosing_section_bounds(&self.document, caret.paragraph, section_slots))
+    else {
       return;
     };
     let start = DocumentOffset {
