@@ -65,13 +65,14 @@ impl RichTextEditor {
     }) else {
       return false;
     };
+    let origin = layout.bounds.map(|bounds| bounds.origin).unwrap_or(point(px(0.0), px(0.0)));
     let Some(caret) = caret_bounds(
       &layout,
       DocumentOffset {
         paragraph: paragraph_ix,
         byte: paragraph_text_len(paragraph),
       },
-      point(px(0.0), px(0.0)),
+      origin,
     ) else {
       return false;
     };

@@ -273,7 +273,7 @@ impl Element for VirtualParagraphChunkElement {
               paragraph.lines.last().map(|line| {
                 (
                   line.origin.x + line.width + px(6.0),
-                  paragraph.top + line.origin.y + ((line.line_height - indicator_size) / 2.0).max(px(0.0)),
+                  line.origin.y + ((line.line_height - indicator_size) / 2.0).max(px(0.0)),
                 )
               })
             })
@@ -282,7 +282,7 @@ impl Element for VirtualParagraphChunkElement {
             gpui::point(bounds.left() + indicator_x, bounds.top() + indicator_y),
             gpui::size(indicator_size, indicator_size),
           );
-          window.paint_quad(fill(indicator, Background::from(gpui::black().opacity(0.55))));
+          window.paint_quad(fill(indicator, Background::from(gpui::black().opacity(0.7))));
         }
       }
       let show_caret = caret_offset.is_some_and(|offset| {
